@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useConnection, Connection } from '@/contexts/ConnectionContext';
+import { useConnection, Connection, CodeSettings } from '@/contexts/ConnectionContext';
 import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,9 +40,11 @@ import {
   MoreVertical, 
   UserX, 
   ShieldAlert,
-  Send
+  Send,
+  Clock
 } from 'lucide-react';
 import ChatView from '../components/ChatView';
+import { Slider } from '@/components/ui/slider';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -54,7 +56,10 @@ const Home = () => {
     generateConnectionCode,
     verifyConnectionCode,
     removeConnection,
-    blockConnection
+    blockConnection,
+    currentCode,
+    defaultCodeSettings,
+    updateCodeSettings
   } = useConnection();
   const { getMessagesForConnection, markMessagesAsRead } = useChat();
   
@@ -62,6 +67,8 @@ const Home = () => {
   const [connectionCode, setConnectionCode] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showCodeSettings, setShowCodeSettings] = useState(false);
+  const [tempSettings, setTempSettings] = useState<CodeSettings>(defaultCodeSettings);
 
   const handleGenerateCode = () => {
     const code = generateConnectionCode();
@@ -97,6 +104,11 @@ const Home = () => {
     navigate('/login');
   };
 
+  const handleSaveCodeSettings = () => {
+    updateCodeSettings(tempSettings);
+    setShowCodeSettings(false);
+  };
+
   // Count unread messages for a connection
   const getUnreadCount = (connectionId: string) => {
     const messages = getMessagesForConnection(connectionId);
@@ -110,6 +122,21 @@ const Home = () => {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const formatTimeLeft = () => {
+    if (!currentCode) return '';
+    
+    const expirationTime = new Date(currentCode.createdAt).getTime() + 
+      (currentCode.settings.expirationMinutes * 60 * 1000);
+    const timeLeftMs = expirationTime - Date.now();
+    
+    if (timeLeftMs <= 0) return 'Expired';
+    
+    const minutesLeft = Math.floor(timeLeftMs / 60000);
+    const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+    
+    return `${minutesLeft}:${secondsLeft.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -251,19 +278,52 @@ const Home = () => {
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">Generate your code</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-medium">Generate your code</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setTempSettings({...defaultCodeSettings});
+                    setShowCodeSettings(true);
+                  }}
+                >
+                  <Settings className="h-4 w-4 mr-1" /> 
+                  Code Settings
+                </Button>
+              </div>
+              
               <div className="flex items-center space-x-2">
                 <Input 
-                  value={connectionCode} 
+                  value={connectionCode || (currentCode?.code || '')} 
                   readOnly 
                   placeholder="Your code will appear here" 
                   className="text-center text-xl font-bold tracking-wider"
                 />
-                <Button onClick={handleGenerateCode}>Generate</Button>
+                <Button 
+                  onClick={handleGenerateCode}
+                  disabled={!!currentCode && currentCode.usesLeft > 0}
+                >
+                  Generate
+                </Button>
               </div>
-              {connectionCode && (
+              
+              {currentCode && (
+                <div className="mt-2 text-xs text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1 text-amber-600">
+                    <Clock className="h-3 w-3" />
+                    <span>Expires in {formatTimeLeft()}</span>
+                  </div>
+                  <p className="text-gray-500">
+                    Uses left: {currentCode.usesLeft} of {currentCode.settings.maxUses}
+                  </p>
+                </div>
+              )}
+              
+              {connectionCode && !currentCode && (
                 <p className="text-xs text-center mt-1 text-amber-600">
-                  This code will expire in 5 minutes. Share it with your contact in person.
+                  This code will expire in {defaultCodeSettings.expirationMinutes} minutes. 
+                  Share it with your contact in person.
                 </p>
               )}
             </div>
@@ -300,6 +360,74 @@ const Home = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConnectDialog(false)}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Code Settings Dialog */}
+      <Dialog open={showCodeSettings} onOpenChange={setShowCodeSettings}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connection Code Settings</DialogTitle>
+            <DialogDescription>
+              Customize how your connection codes work
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-2">
+                  <label className="text-sm font-medium">
+                    Code Expiration Time
+                  </label>
+                  <span className="text-sm text-gray-500">
+                    {tempSettings.expirationMinutes} minutes
+                  </span>
+                </div>
+                <Slider
+                  value={[tempSettings.expirationMinutes]}
+                  min={1}
+                  max={60}
+                  step={1}
+                  onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
+                />
+              </div>
+              
+              <div>
+                <div className="flex justify-between mb-2">
+                  <label className="text-sm font-medium">
+                    Maximum Uses Per Code
+                  </label>
+                  <span className="text-sm text-gray-500">
+                    {tempSettings.maxUses} uses
+                  </span>
+                </div>
+                <Slider
+                  value={[tempSettings.maxUses]}
+                  min={1}
+                  max={10}
+                  step={1}
+                  onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
+                />
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <p className="text-xs text-gray-500">
+                These settings will apply to all new codes you generate. 
+                Note that in a real app, these would be stored securely in the database.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCodeSettings(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCodeSettings}>
+              Save Settings
             </Button>
           </DialogFooter>
         </DialogContent>

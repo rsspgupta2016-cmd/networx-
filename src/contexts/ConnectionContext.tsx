@@ -17,15 +17,36 @@ export type Connection = {
   blocked: boolean;
 };
 
+export type CodeSettings = {
+  expirationMinutes: number;
+  maxUses: number;
+};
+
+type CodeStatus = {
+  code: string;
+  createdAt: string;
+  settings: CodeSettings;
+  usesLeft: number;
+  isExpired: boolean;
+};
+
 type ConnectionContextType = {
   connections: Connection[];
   activeConnection: Connection | null;
   setActiveConnection: (connection: Connection | null) => void;
-  generateConnectionCode: () => string;
+  generateConnectionCode: (settings?: Partial<CodeSettings>) => string;
   verifyConnectionCode: (code: string) => Promise<boolean>;
   addConnection: (connection: Connection) => void;
   removeConnection: (connectionId: string) => void;
   blockConnection: (connectionId: string) => void;
+  currentCode: CodeStatus | null;
+  updateCodeSettings: (settings: Partial<CodeSettings>) => void;
+  defaultCodeSettings: CodeSettings;
+};
+
+const DEFAULT_CODE_SETTINGS: CodeSettings = {
+  expirationMinutes: 5,
+  maxUses: 1,
 };
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
@@ -42,6 +63,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [activeConnection, setActiveConnection] = useState<Connection | null>(null);
+  const [currentCode, setCurrentCode] = useState<CodeStatus | null>(null);
+  const [defaultCodeSettings, setDefaultCodeSettings] = useState<CodeSettings>(DEFAULT_CODE_SETTINGS);
 
   // For demo: load mock connections from localStorage
   useEffect(() => {
@@ -78,6 +101,33 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         setConnections(demoConnections);
         localStorage.setItem(`networx-connections-${user.id}`, JSON.stringify(demoConnections));
       }
+      
+      // Also load any active code
+      const storedCode = localStorage.getItem(`networx-connection-code-${user.id}`);
+      if (storedCode) {
+        const parsedCode = JSON.parse(storedCode) as CodeStatus;
+        
+        // Check if code is expired
+        const expirationTime = new Date(parsedCode.createdAt).getTime() + 
+          (parsedCode.settings.expirationMinutes * 60 * 1000);
+        
+        if (expirationTime > Date.now() && parsedCode.usesLeft > 0) {
+          setCurrentCode({
+            ...parsedCode,
+            isExpired: false
+          });
+        } else {
+          // Clean up expired code
+          localStorage.removeItem(`networx-connection-code-${user.id}`);
+          setCurrentCode(null);
+        }
+      }
+      
+      // Load custom settings
+      const storedSettings = localStorage.getItem(`networx-code-settings-${user.id}`);
+      if (storedSettings) {
+        setDefaultCodeSettings(JSON.parse(storedSettings));
+      }
     }
   }, [user]);
 
@@ -88,19 +138,82 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [connections, user]);
 
-  const generateConnectionCode = () => {
+  // Check for code expiration
+  useEffect(() => {
+    if (!currentCode || !user) return;
+    
+    const checkCodeExpiration = () => {
+      const expirationTime = new Date(currentCode.createdAt).getTime() + 
+        (currentCode.settings.expirationMinutes * 60 * 1000);
+      
+      if (expirationTime <= Date.now() || currentCode.usesLeft <= 0) {
+        localStorage.removeItem(`networx-connection-code-${user.id}`);
+        setCurrentCode(null);
+        toast({
+          title: "Connection code expired",
+          description: "Your one-time code is no longer valid",
+        });
+      }
+    };
+    
+    const intervalId = setInterval(checkCodeExpiration, 10000); // Check every 10 seconds
+    return () => clearInterval(intervalId);
+  }, [currentCode, user]);
+
+  const updateCodeSettings = (settings: Partial<CodeSettings>) => {
+    const newSettings = {
+      ...defaultCodeSettings,
+      ...settings
+    };
+    
+    setDefaultCodeSettings(newSettings);
+    if (user) {
+      localStorage.setItem(`networx-code-settings-${user.id}`, JSON.stringify(newSettings));
+    }
+    
+    toast({
+      title: "Settings updated",
+      description: "Your connection code settings have been saved",
+    });
+  };
+
+  const generateConnectionCode = (customSettings?: Partial<CodeSettings>) => {
     // Generate a random 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // In a real app, save this to the database with an expiration
-    // For demo, store in localStorage temporarily
+    // Use custom settings or default
+    const settings = {
+      ...defaultCodeSettings,
+      ...(customSettings || {})
+    };
+    
+    // Create code status object
+    const codeStatus: CodeStatus = {
+      code,
+      createdAt: new Date().toISOString(),
+      settings,
+      usesLeft: settings.maxUses,
+      isExpired: false
+    };
+    
+    // Store in state and localStorage
+    setCurrentCode(codeStatus);
+    
     if (user) {
-      localStorage.setItem(`networx-connection-code-${user.id}`, code);
+      localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(codeStatus));
       
-      // Set code to expire in 5 minutes
+      // Set code to expire
+      const expirationTime = settings.expirationMinutes * 60 * 1000;
       setTimeout(() => {
-        localStorage.removeItem(`networx-connection-code-${user.id}`);
-      }, 5 * 60 * 1000);
+        const currentStoredCode = localStorage.getItem(`networx-connection-code-${user.id}`);
+        if (currentStoredCode) {
+          const parsedCode = JSON.parse(currentStoredCode);
+          if (parsedCode.code === code) {
+            localStorage.removeItem(`networx-connection-code-${user.id}`);
+            setCurrentCode(null);
+          }
+        }
+      }, expirationTime);
     }
     
     return code;
@@ -110,6 +223,25 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     // In a real app, this would verify with the backend
     // For demo, we'll simulate a successful connection
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Update the uses left
+    if (currentCode && currentCode.code === code) {
+      const updatedUsesLeft = currentCode.usesLeft - 1;
+      const updatedCode = {
+        ...currentCode,
+        usesLeft: updatedUsesLeft
+      };
+      
+      setCurrentCode(updatedCode);
+      if (user) {
+        if (updatedUsesLeft <= 0) {
+          localStorage.removeItem(`networx-connection-code-${user.id}`);
+          setCurrentCode(null);
+        } else {
+          localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(updatedCode));
+        }
+      }
+    }
     
     // Add a mock connection for the code
     const newConnection: Connection = {
@@ -175,6 +307,9 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     addConnection,
     removeConnection,
     blockConnection,
+    currentCode,
+    updateCodeSettings,
+    defaultCodeSettings,
   };
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;
