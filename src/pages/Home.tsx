@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -126,7 +125,7 @@ const Home = () => {
   };
 
   const formatTimeLeft = () => {
-    if (!currentCode) return '';
+    if (!currentCode || currentCode.settings.expirationMinutes === null) return 'No expiration';
     
     const expirationTime = new Date(currentCode.createdAt).getTime() + 
       (currentCode.settings.expirationMinutes * 60 * 1000);
@@ -152,7 +151,9 @@ const Home = () => {
             </Avatar>
             <div className="ml-3">
               <h2 className="text-lg font-semibold">{user?.displayName}</h2>
-              <p className="text-xs text-blue-100">NetworX</p>
+              <p className="text-xs text-blue-100">
+                {user?.identityCode ? `ID: ${user.identityCode}` : 'NetworX'}
+              </p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -360,17 +361,39 @@ const Home = () => {
                     Code Expiration Time
                   </label>
                   <span className="text-sm text-gray-500">
-                    {tempSettings.expirationMinutes} minutes
+                    {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
                   </span>
                 </div>
-                <Slider
-                  value={[tempSettings.expirationMinutes]}
-                  min={1}
-                  max={60}
-                  step={1}
-                  className="bg-blue-100"
-                  onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
-                />
+                
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="useExpiration"
+                    className="mr-2"
+                    checked={tempSettings.expirationMinutes !== null}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // If checked, set default value of 5 minutes
+                        setTempSettings({...tempSettings, expirationMinutes: 5});
+                      } else {
+                        // If unchecked, set to null (no expiration)
+                        setTempSettings({...tempSettings, expirationMinutes: null});
+                      }
+                    }}
+                  />
+                  <label htmlFor="useExpiration" className="text-sm">Enable expiration time</label>
+                </div>
+                
+                {tempSettings.expirationMinutes !== null && (
+                  <Slider
+                    value={[tempSettings.expirationMinutes]}
+                    min={1}
+                    max={60}
+                    step={1}
+                    className="bg-blue-100"
+                    onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
+                  />
+                )}
               </div>
               
               <div>

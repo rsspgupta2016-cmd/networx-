@@ -18,7 +18,7 @@ export type Connection = {
 };
 
 export type CodeSettings = {
-  expirationMinutes: number;
+  expirationMinutes: number | null; // Changed to allow null for no expiration
   maxUses: number;
 };
 
@@ -45,7 +45,7 @@ type ConnectionContextType = {
 };
 
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
-  expirationMinutes: 5,
+  expirationMinutes: null, // Default: no expiration
   maxUses: 1,
 };
 
@@ -107,19 +107,32 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       if (storedCode) {
         const parsedCode = JSON.parse(storedCode) as CodeStatus;
         
-        // Check if code is expired
-        const expirationTime = new Date(parsedCode.createdAt).getTime() + 
-          (parsedCode.settings.expirationMinutes * 60 * 1000);
-        
-        if (expirationTime > Date.now() && parsedCode.usesLeft > 0) {
-          setCurrentCode({
-            ...parsedCode,
-            isExpired: false
-          });
+        // Check if code is expired (if it has an expiration time)
+        if (parsedCode.settings.expirationMinutes !== null) {
+          const expirationTime = new Date(parsedCode.createdAt).getTime() + 
+            (parsedCode.settings.expirationMinutes * 60 * 1000);
+          
+          if (expirationTime > Date.now() && parsedCode.usesLeft > 0) {
+            setCurrentCode({
+              ...parsedCode,
+              isExpired: false
+            });
+          } else {
+            // Clean up expired code
+            localStorage.removeItem(`networx-connection-code-${user.id}`);
+            setCurrentCode(null);
+          }
         } else {
-          // Clean up expired code
-          localStorage.removeItem(`networx-connection-code-${user.id}`);
-          setCurrentCode(null);
+          // For codes with no expiration, just check uses
+          if (parsedCode.usesLeft > 0) {
+            setCurrentCode({
+              ...parsedCode,
+              isExpired: false
+            });
+          } else {
+            localStorage.removeItem(`networx-connection-code-${user.id}`);
+            setCurrentCode(null);
+          }
         }
       }
       
@@ -140,7 +153,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
 
   // Check for code expiration
   useEffect(() => {
-    if (!currentCode || !user) return;
+    if (!currentCode || !user || currentCode.settings.expirationMinutes === null) return;
     
     const checkCodeExpiration = () => {
       const expirationTime = new Date(currentCode.createdAt).getTime() + 
@@ -202,18 +215,20 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(codeStatus));
       
-      // Set code to expire
-      const expirationTime = settings.expirationMinutes * 60 * 1000;
-      setTimeout(() => {
-        const currentStoredCode = localStorage.getItem(`networx-connection-code-${user.id}`);
-        if (currentStoredCode) {
-          const parsedCode = JSON.parse(currentStoredCode);
-          if (parsedCode.code === code) {
-            localStorage.removeItem(`networx-connection-code-${user.id}`);
-            setCurrentCode(null);
+      // Only set expiration timeout if there is an expiration time
+      if (settings.expirationMinutes !== null) {
+        const expirationTime = settings.expirationMinutes * 60 * 1000;
+        setTimeout(() => {
+          const currentStoredCode = localStorage.getItem(`networx-connection-code-${user.id}`);
+          if (currentStoredCode) {
+            const parsedCode = JSON.parse(currentStoredCode);
+            if (parsedCode.code === code) {
+              localStorage.removeItem(`networx-connection-code-${user.id}`);
+              setCurrentCode(null);
+            }
           }
-        }
-      }, expirationTime);
+        }, expirationTime);
+      }
     }
     
     return code;

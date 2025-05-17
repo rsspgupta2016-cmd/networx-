@@ -15,6 +15,7 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import AdminPanel from "./components/AdminPanel"; // Import the new AdminPanel component
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,12 @@ const App = () => (
                       <Settings />
                     </ProtectedRoute>
                   } 
+                />
+                
+                {/* Admin Panel Route */}
+                <Route 
+                  path="/admin" 
+                  element={<AdminPanel />} 
                 />
                 
                 {/* Redirect root to login or home */}

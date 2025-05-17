@@ -7,6 +7,7 @@ type User = {
   phoneNumber: string;
   displayName: string;
   profileImage?: string;
+  identityCode?: string; // New field for unique identity code
 };
 
 type AuthContextType = {
@@ -15,7 +16,7 @@ type AuthContextType = {
   login: (phoneNumber: string, code: string) => Promise<void>;
   signup: (phoneNumber: string, displayName: string) => Promise<void>;
   logout: () => void;
-  sendVerificationCode: (phoneNumber: string) => Promise<void>;
+  sendVerificationCode: (phoneNumber: string) => Promise<void>; // Changed return type from boolean to void
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +27,25 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+// Generate a unique identity code for users
+const generateIdentityCode = (): string => {
+  const prefix = 'NX';
+  const middlePart = Math.floor(10000 + Math.random() * 90000).toString();
+  const suffix = Array(4)
+    .fill(0)
+    .map(() => String.fromCharCode(65 + Math.floor(Math.random() * 26)))
+    .join('');
+  
+  return `${prefix}-${middlePart}-${suffix}`;
+};
+
+// Mock encryption for demo purposes (in a real app, use a proper encryption library)
+const encryptPhoneNumber = (phoneNumber: string): string => {
+  // In a real app, this would use AES-256 or similar strong encryption
+  // For demo, we'll do a simple obfuscation
+  return btoa(`encrypted-${phoneNumber}-with-aes-256`);
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -53,11 +73,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Invalid verification code");
       }
       
+      // In a real app, encrypted phone number would be stored in Supabase
+      // and the identity code would be retrieved from the database
+      const storedEncryptedPhone = localStorage.getItem(`networx-encrypted-${phoneNumber}`);
+      let identityCode = '';
+      
+      if (storedEncryptedPhone) {
+        // Get existing identity code for this phone
+        const storedIdentity = localStorage.getItem(`networx-identity-${phoneNumber}`);
+        identityCode = storedIdentity || generateIdentityCode();
+      } else {
+        // Generate new identity code for first login
+        identityCode = generateIdentityCode();
+        localStorage.setItem(`networx-encrypted-${phoneNumber}`, encryptPhoneNumber(phoneNumber));
+        localStorage.setItem(`networx-identity-${phoneNumber}`, identityCode);
+      }
+      
       // Check if user exists in our mock database
       const mockUser = {
         id: crypto.randomUUID(),
         phoneNumber,
-        displayName: phoneNumber.replace('+', '') // Default name
+        displayName: phoneNumber.replace('+', ''), // Default name
+        identityCode
       };
 
       setUser(mockUser);
@@ -85,10 +122,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // In a real app, this would create a user in Supabase
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
       
+      // Generate encrypted phone number and identity code
+      const encryptedPhone = encryptPhoneNumber(phoneNumber);
+      const identityCode = generateIdentityCode();
+      
+      // In a real app, these would be stored in Supabase
+      localStorage.setItem(`networx-encrypted-${phoneNumber}`, encryptedPhone);
+      localStorage.setItem(`networx-identity-${phoneNumber}`, identityCode);
+      
       const newUser = {
         id: crypto.randomUUID(),
         phoneNumber,
-        displayName: displayName || phoneNumber.replace('+', '')
+        displayName: displayName || phoneNumber.replace('+', ''),
+        identityCode
       };
 
       setUser(newUser);
@@ -119,7 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: `A code has been sent to ${phoneNumber}`,
       });
       
-      return true;
+      // Changed from returning true to returning void
     } catch (error: any) {
       toast({
         title: "Failed to send code",
