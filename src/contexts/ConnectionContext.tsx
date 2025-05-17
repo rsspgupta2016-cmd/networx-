@@ -14,11 +14,12 @@ export type Connection = {
   };
   profileImage?: string;
   connectionCode?: string;
-  blocked: boolean;
+  muted: boolean;
+  callsMuted: boolean;
 };
 
 export type CodeSettings = {
-  expirationMinutes: number | null; // Changed to allow null for no expiration
+  expirationMinutes: number | null; // Null for no expiration
   maxUses: number;
 };
 
@@ -38,7 +39,8 @@ type ConnectionContextType = {
   verifyConnectionCode: (code: string) => Promise<boolean>;
   addConnection: (connection: Connection) => void;
   removeConnection: (connectionId: string) => void;
-  blockConnection: (connectionId: string) => void;
+  muteConnection: (connectionId: string) => void;
+  muteConnectionCalls: (connectionId: string) => void;
   currentCode: CodeStatus | null;
   updateCodeSettings: (settings: Partial<CodeSettings>) => void;
   defaultCodeSettings: CodeSettings;
@@ -84,7 +86,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
               timestamp: new Date().toISOString(),
               isRead: false,
             },
-            blocked: false,
+            muted: false,
+            callsMuted: false,
           },
           {
             id: '2',
@@ -95,7 +98,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
               timestamp: new Date(Date.now() - 3600000).toISOString(),
               isRead: true,
             },
-            blocked: false,
+            muted: false,
+            callsMuted: false,
           },
         ];
         setConnections(demoConnections);
@@ -268,7 +272,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         timestamp: new Date().toISOString(),
         isRead: false,
       },
-      blocked: false,
+      muted: false,
+      callsMuted: false,
     };
     
     addConnection(newConnection);
@@ -295,21 +300,39 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const blockConnection = (connectionId: string) => {
+  const muteConnection = (connectionId: string) => {
     setConnections(prev => 
       prev.map(conn => 
         conn.id === connectionId 
-          ? { ...conn, blocked: true } 
+          ? { ...conn, muted: !conn.muted } 
           : conn
       )
     );
-    if (activeConnection?.id === connectionId) {
-      setActiveConnection(null);
-    }
+    
+    const connection = connections.find(conn => conn.id === connectionId);
+    const newMuteState = !connection?.muted;
+    
     toast({
-      title: "Contact blocked",
-      description: "This contact can no longer message you and cannot reconnect",
-      variant: "destructive",
+      title: newMuteState ? "Chat muted" : "Chat unmuted",
+      description: newMuteState ? "You won't receive notifications from this chat" : "You will now receive notifications from this chat",
+    });
+  };
+
+  const muteConnectionCalls = (connectionId: string) => {
+    setConnections(prev => 
+      prev.map(conn => 
+        conn.id === connectionId 
+          ? { ...conn, callsMuted: !conn.callsMuted } 
+          : conn
+      )
+    );
+    
+    const connection = connections.find(conn => conn.id === connectionId);
+    const newMuteState = !connection?.callsMuted;
+    
+    toast({
+      title: newMuteState ? "Calls muted" : "Calls unmuted",
+      description: newMuteState ? "You won't receive call notifications from this contact" : "You will now receive call notifications from this contact",
     });
   };
 
@@ -321,7 +344,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     verifyConnectionCode,
     addConnection,
     removeConnection,
-    blockConnection,
+    muteConnection,
+    muteConnectionCalls,
     currentCode,
     updateCodeSettings,
     defaultCodeSettings,

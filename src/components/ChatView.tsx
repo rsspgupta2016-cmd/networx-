@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -6,7 +5,7 @@ import { Connection } from '@/contexts/ConnectionContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, User } from 'lucide-react';
+import { Send, User, BellOff, VolumeX } from 'lucide-react';
 
 type ChatViewProps = {
   connection: Connection;
@@ -80,26 +79,45 @@ const ChatView = ({ connection }: ChatViewProps) => {
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
-      <div className="flex items-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
-        <Avatar className="h-10 w-10 border-2 border-white">
-          <AvatarImage src={connection.profileImage} />
-          <AvatarFallback className="bg-blue-700 text-white">{getInitials(connection.name)}</AvatarFallback>
-        </Avatar>
-        <div className="ml-3">
-          <h2 className="font-semibold">{connection.name}</h2>
-          <p className="text-xs text-blue-100">Online</p>
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md">
+        <div className="flex items-center">
+          <Avatar className="h-10 w-10 border-2 border-white">
+            <AvatarImage src={connection.profileImage} />
+            <AvatarFallback className="bg-green-700 text-white">{getInitials(connection.name)}</AvatarFallback>
+          </Avatar>
+          <div className="ml-3">
+            <div className="flex items-center">
+              <h2 className="font-semibold">{connection.name}</h2>
+              <div className="flex ml-2">
+                {connection.muted && (
+                  <div className="bg-green-700 rounded-full p-0.5 mr-1" title="Messages muted">
+                    <BellOff className="h-3 w-3" />
+                  </div>
+                )}
+                {connection.callsMuted && (
+                  <div className="bg-green-700 rounded-full p-0.5" title="Calls muted">
+                    <VolumeX className="h-3 w-3" />
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-green-100">Online</p>
+          </div>
+        </div>
+        <div className="text-xs bg-green-700 px-2 py-1 rounded-full">
+          ID: {user?.identityCode || 'NX-XXXXX'}
         </div>
       </div>
       
       {/* Messages Area */}
       <div 
         className="flex-1 overflow-y-auto p-4 bg-[#e0f2ff] bg-opacity-50 bg-[url('/pattern-bg.svg')] space-y-4"
-        style={{ backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48ZyBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjZGVlYmZmIiBkPSJNMzYgMzBhNiA2IDAgMSAxLTEyIDAgNiA2IDAgMCAxIDEyIDB6Ii8+PHBhdGggZmlsbD0iI2VkZjRmZiIgZD0iTTAgMGgxMnYxMkgwem0yNCAwaDEydjEySDI0em00OCAwaDEydjEySDcyek0wIDI0aDEydjEySDB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6TTAgNDhoMTJ2MTJIMHB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6Ii8+PC9nPjwvc3ZnPg==')" }}
+        style={{ backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48ZyBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjZDdmNWRiIiBkPSJNMzYgMzBhNiA2IDAgMSAxLTEyIDAgNiA2IDAgMCAxIDEyIDB6Ii8+PHBhdGggZmlsbD0iI2VkZjhmNSIgZD0iTTAgMGgxMnYxMkgwem0yNCAwaDEydjEySDI0em00OCAwaDEydjEySDcyek0wIDI0aDEydjEySDB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6TTAgNDhoMTJ2MTJIMHB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6Ii8+PC9nPjwvc3ZnPg==')" }}
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full opacity-60">
-            <User size={40} className="text-blue-500 mb-2" />
-            <p className="text-center text-sm text-blue-700">No messages yet. Start the conversation!</p>
+            <User size={40} className="text-green-500 mb-2" />
+            <p className="text-center text-sm text-green-700">No messages yet. Start the conversation!</p>
           </div>
         ) : (
           messages.map((message, index) => {
@@ -116,7 +134,7 @@ const ChatView = ({ connection }: ChatViewProps) => {
               <React.Fragment key={message.id}>
                 {showDateSeparator && (
                   <div className="flex justify-center my-4">
-                    <div className="px-3 py-1 bg-blue-100 rounded-full text-xs text-blue-600 font-medium">
+                    <div className="px-3 py-1 bg-green-100 rounded-full text-xs text-green-600 font-medium">
                       {getDateSeparator(messageDate)}
                     </div>
                   </div>
@@ -126,22 +144,22 @@ const ChatView = ({ connection }: ChatViewProps) => {
                 >
                   {!isOwnMessage && (
                     <Avatar className="h-8 w-8 mr-2 mt-1">
-                      <AvatarFallback className="bg-blue-500 text-white">{getInitials(connection.name)}</AvatarFallback>
+                      <AvatarFallback className="bg-green-500 text-white">{getInitials(connection.name)}</AvatarFallback>
                     </Avatar>
                   )}
                   <div className={`max-w-[75%] ${isOwnMessage ? 'mr-1' : 'ml-1'}`}>
                     <div
                       className={`p-3 rounded-lg shadow-sm ${
                         isOwnMessage 
-                          ? 'bg-green-100 text-blue-900 rounded-br-none' 
-                          : 'bg-white text-blue-900 rounded-bl-none'
+                          ? 'bg-green-100 text-green-900 rounded-br-none' 
+                          : 'bg-white text-green-900 rounded-bl-none'
                       }`}
                     >
                       {message.content}
                     </div>
                     <div 
                       className={`text-xs mt-1 flex items-center ${
-                        isOwnMessage ? 'justify-end text-blue-600' : 'text-blue-500'
+                        isOwnMessage ? 'justify-end text-green-600' : 'text-green-500'
                       }`}
                     >
                       {formatTime(message.timestamp)}
@@ -164,13 +182,13 @@ const ChatView = ({ connection }: ChatViewProps) => {
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
           placeholder="Type a message..."
-          className="flex-grow border-blue-200 focus:border-blue-400"
+          className="flex-grow border-green-200 focus:border-green-400"
         />
         <Button 
           type="submit" 
           size="icon" 
           disabled={!messageInput.trim()}
-          className={`rounded-full ${messageInput.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300'}`}
+          className={`rounded-full ${messageInput.trim() ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300'}`}
         >
           <Send className="h-4 w-4" />
         </Button>
