@@ -20,14 +20,14 @@ export type Connection = {
 
 export type CodeSettings = {
   expirationMinutes: number | null; // Null for no expiration
-  maxUses: number;
+  maxUses: number | null; // Null for unlimited uses within expiration time
 };
 
 type CodeStatus = {
   code: string;
   createdAt: string;
   settings: CodeSettings;
-  usesLeft: number;
+  usesLeft: number | null; // Null for unlimited uses
   isExpired: boolean;
 };
 
@@ -47,8 +47,8 @@ type ConnectionContextType = {
 };
 
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
-  expirationMinutes: null, // Default: no expiration
-  maxUses: 1,
+  expirationMinutes: 15, // Default: 15 minutes expiration
+  maxUses: null, // Default: unlimited uses within time period
 };
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
@@ -116,7 +116,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
           const expirationTime = new Date(parsedCode.createdAt).getTime() + 
             (parsedCode.settings.expirationMinutes * 60 * 1000);
           
-          if (expirationTime > Date.now() && parsedCode.usesLeft > 0) {
+          if (expirationTime > Date.now()) {
             setCurrentCode({
               ...parsedCode,
               isExpired: false
@@ -127,8 +127,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
             setCurrentCode(null);
           }
         } else {
-          // For codes with no expiration, just check uses
-          if (parsedCode.usesLeft > 0) {
+          // For codes with no expiration, check if uses are left
+          if (parsedCode.usesLeft === null || parsedCode.usesLeft > 0) {
             setCurrentCode({
               ...parsedCode,
               isExpired: false
@@ -163,12 +163,12 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       const expirationTime = new Date(currentCode.createdAt).getTime() + 
         (currentCode.settings.expirationMinutes * 60 * 1000);
       
-      if (expirationTime <= Date.now() || currentCode.usesLeft <= 0) {
+      if (expirationTime <= Date.now()) {
         localStorage.removeItem(`networx-connection-code-${user.id}`);
         setCurrentCode(null);
         toast({
           title: "Connection code expired",
-          description: "Your one-time code is no longer valid",
+          description: "Your time-limited code is no longer valid",
         });
       }
     };
@@ -209,7 +209,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       code,
       createdAt: new Date().toISOString(),
       settings,
-      usesLeft: settings.maxUses,
+      usesLeft: settings.maxUses, // Can be null for unlimited
       isExpired: false
     };
     
@@ -243,8 +243,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     // For demo, we'll simulate a successful connection
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Update the uses left
-    if (currentCode && currentCode.code === code) {
+    // Update the uses left if tracking uses
+    if (currentCode && currentCode.code === code && currentCode.usesLeft !== null) {
       const updatedUsesLeft = currentCode.usesLeft - 1;
       const updatedCode = {
         ...currentCode,

@@ -7,16 +7,18 @@ type User = {
   phoneNumber: string;
   displayName: string;
   profileImage?: string;
-  identityCode?: string; // New field for unique identity code
+  identityCode?: string; // Unique identity code
+  interests: string[]; // Added interests field
 };
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   login: (phoneNumber: string, code: string) => Promise<void>;
-  signup: (phoneNumber: string, displayName: string) => Promise<void>;
+  signup: (phoneNumber: string, displayName: string, interests: string[]) => Promise<void>;
   logout: () => void;
-  sendVerificationCode: (phoneNumber: string) => Promise<void>; // Changed return type from boolean to void
+  sendVerificationCode: (phoneNumber: string) => Promise<void>;
+  updateUserProfile: (updates: Partial<Omit<User, 'id' | 'phoneNumber' | 'identityCode'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +96,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: crypto.randomUUID(),
         phoneNumber,
         displayName: phoneNumber.replace('+', ''), // Default name
-        identityCode
+        identityCode,
+        interests: [] // Default empty interests
       };
 
       setUser(mockUser);
@@ -115,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signup = async (phoneNumber: string, displayName: string) => {
+  const signup = async (phoneNumber: string, displayName: string, interests: string[] = []) => {
     try {
       setIsLoading(true);
       
@@ -134,7 +137,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: crypto.randomUUID(),
         phoneNumber,
         displayName: displayName || phoneNumber.replace('+', ''),
-        identityCode
+        identityCode,
+        interests // Store user interests
       };
 
       setUser(newUser);
@@ -154,6 +158,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
   };
+  
+  const updateUserProfile = async (updates: Partial<Omit<User, 'id' | 'phoneNumber' | 'identityCode'>>) => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // In a real app, this would update user data in Supabase
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      
+      const updatedUser = {
+        ...user,
+        ...updates
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem('networx-user', JSON.stringify(updatedUser));
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sendVerificationCode = async (phoneNumber: string) => {
     try {
@@ -164,8 +201,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Verification code sent",
         description: `A code has been sent to ${phoneNumber}`,
       });
-      
-      // Changed from returning true to returning void
     } catch (error: any) {
       toast({
         title: "Failed to send code",
@@ -192,6 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signup,
     logout,
     sendVerificationCode,
+    updateUserProfile, // Add the new method
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

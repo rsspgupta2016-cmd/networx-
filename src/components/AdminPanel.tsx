@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, AlertCircle, CheckCircle2, Key } from 'lucide-react';
+import { Shield, AlertCircle, CheckCircle2, Key, AlertTriangle } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const AdminPanel = () => {
   const [identityCode, setIdentityCode] = useState('');
@@ -13,8 +14,9 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [accessLog, setAccessLog] = useState<Array<{timestamp: string, code: string, admin: string}>>([]);
+  const [showCredentials, setShowCredentials] = useState(false);
 
-  // Simulated admin credentials (in real app, this would be in a secure backend)
+  // Admin credentials (in real app, this would be in a secure backend)
   const validAdminPassword = 'admin123';
   const validMfaCode = '123456';
 
@@ -87,6 +89,28 @@ const AdminPanel = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 mt-4">
+        {showCredentials && (
+          <div className="bg-yellow-50 border border-yellow-100 rounded-md p-3 mb-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+              <p className="text-yellow-800 font-medium text-sm">Admin Credentials (Demo Only)</p>
+            </div>
+            <div className="mt-2 space-y-1 pl-7">
+              <p className="text-yellow-700 text-sm"><span className="font-semibold">Password:</span> admin123</p>
+              <p className="text-yellow-700 text-sm"><span className="font-semibold">MFA Code:</span> 123456</p>
+            </div>
+          </div>
+        )}
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="w-full text-xs"
+          onClick={() => setShowCredentials(!showCredentials)}
+        >
+          {showCredentials ? 'Hide Demo Credentials' : 'Show Demo Credentials'}
+        </Button>
+        
         <div className="space-y-2">
           <label className="text-sm font-medium">User Identity Code</label>
           <Input 
@@ -157,6 +181,12 @@ const AdminPanel = () => {
             </div>
           </div>
         )}
+        
+        <div className="w-full text-center">
+          <p className="text-xs text-gray-500">
+            In an emergency, contact the system administrator
+          </p>
+        </div>
       </CardFooter>
     </Card>
   );

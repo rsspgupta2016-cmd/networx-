@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +26,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import InterestsSelector from '@/components/InterestsSelector';
+import { interestCategories } from '@/pages/Discovery';
 
 const Settings = () => {
   const { user, logout, updateUserProfile } = useAuth();
@@ -235,8 +235,5 @@ const Settings = () => {
     </div>
   );
 };
-
-// Import interestCategories from Discovery.tsx
-import { interestCategories } from '@/pages/Discovery';
 
 export default Settings;
