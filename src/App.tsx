@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ConnectionProvider } from "./contexts/ConnectionContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { useIsMobile } from "./hooks/use-mobile";
 
 // Pages
 import Login from "./pages/Login";
@@ -16,64 +17,114 @@ import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import AdminPanel from "./components/AdminPanel"; // Import the AdminPanel component
+import MobileLayout from "./components/MobileLayout";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ConnectionProvider>
-        <ChatProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Auth Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                
-                {/* Protected Routes */}
-                <Route 
-                  path="/home" 
-                  element={
-                    <ProtectedRoute>
-                      <Home />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                <Route 
-                  path="/settings" 
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                {/* Admin Panel Route - Make sure it's protected */}
-                <Route 
-                  path="/admin" 
-                  element={
-                    <ProtectedRoute>
-                      <AdminPanel />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                {/* Redirect root to login or home */}
-                <Route path="/" element={<Navigate to="/login" />} />
-                
-                {/* 404 Route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </ChatProvider>
-      </ConnectionProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const isMobile = useIsMobile();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ConnectionProvider>
+          <ChatProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                {isMobile ? (
+                  <MobileLayout>
+                    <Routes>
+                      {/* Auth Routes */}
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      
+                      {/* Protected Routes */}
+                      <Route 
+                        path="/home" 
+                        element={
+                          <ProtectedRoute>
+                            <Home />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route 
+                        path="/settings" 
+                        element={
+                          <ProtectedRoute>
+                            <Settings />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      {/* Admin Panel Route - Make sure it's protected */}
+                      <Route 
+                        path="/admin" 
+                        element={
+                          <ProtectedRoute>
+                            <AdminPanel />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      {/* Redirect root to login or home */}
+                      <Route path="/" element={<Navigate to="/login" />} />
+                      
+                      {/* 404 Route */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </MobileLayout>
+                ) : (
+                  <Routes>
+                    {/* Auth Routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    
+                    {/* Protected Routes */}
+                    <Route 
+                      path="/home" 
+                      element={
+                        <ProtectedRoute>
+                          <Home />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    <Route 
+                      path="/settings" 
+                      element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    {/* Admin Panel Route - Make sure it's protected */}
+                    <Route 
+                      path="/admin" 
+                      element={
+                        <ProtectedRoute>
+                          <AdminPanel />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    {/* Redirect root to login or home */}
+                    <Route path="/" element={<Navigate to="/login" />} />
+                    
+                    {/* 404 Route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                )}
+              </BrowserRouter>
+            </TooltipProvider>
+          </ChatProvider>
+        </ConnectionProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

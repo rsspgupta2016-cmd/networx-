@@ -1,12 +1,15 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConnection } from '@/contexts/ConnectionContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,159 +20,169 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { ArrowLeft, ShieldAlert, UserX, Trash2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+} from '@/components/ui/alert-dialog';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { BellOff, Trash2, VolumeX } from 'lucide-react';
 
 const Settings = () => {
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { connections, blockConnection, removeConnection } = useConnection();
+  const { connections, removeConnection, muteConnection, muteConnectionCalls } = useConnection();
 
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
-
-  const handleSaveProfile = () => {
-    // In a real app, this would update the user profile in the database
-    if (user) {
-      const updatedUser = {
-        ...user,
-        displayName
-      };
-      
-      localStorage.setItem('networx-user', JSON.stringify(updatedUser));
-      toast({
-        title: "Profile updated",
-        description: "Your changes have been saved.",
-      });
-    }
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const blockedConnections = connections.filter(conn => conn.blocked);
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="flex items-center p-4 bg-white border-b">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/home')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="ml-4 text-lg font-semibold">Settings</h1>
-      </div>
-
-      <div className="container max-w-2xl py-6 space-y-8">
-        {/* Profile Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Profile</h2>
-          
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <h1 className="text-3xl font-bold mb-8 text-green-800">Account Settings</h1>
+      
+      <Card className="mb-8 border-green-100">
+        <CardHeader className="bg-green-50">
+          <CardTitle className="text-green-800">Your Profile</CardTitle>
+          <CardDescription>Your personal information</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
           <div className="flex items-center mb-6">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-lg">
-                {user?.displayName.charAt(0)}
-              </AvatarFallback>
+            <Avatar className="h-16 w-16 mr-4 bg-green-600 text-white text-xl">
+              <AvatarFallback>{user?.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="ml-4">
-              <p className="text-sm text-gray-500">Your photo is only visible to connections</p>
-              <Button variant="outline" size="sm" className="mt-2">
-                Change Photo
-              </Button>
+            <div>
+              <h3 className="text-xl font-semibold">{user?.displayName}</h3>
+              <p className="text-sm text-gray-500">Account created on {new Date().toLocaleDateString()}</p>
             </div>
           </div>
-          
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Identity Code</label>
+              <div className="bg-gray-100 p-2 rounded font-mono text-sm">{user?.identityCode || 'NX-XXXXX'}</div>
+              <p className="mt-1 text-xs text-gray-500">This is your unique identifier in the NetworX system</p>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input
-                id="phoneNumber"
-                value={user?.phoneNumber}
-                disabled
-              />
-              <p className="text-xs text-gray-500">
-                Your phone number is never shared with other users
-              </p>
-            </div>
-            
-            <Button onClick={handleSaveProfile} className="mt-2">
-              Save Changes
-            </Button>
           </div>
-        </div>
-        
-        {/* Blocked Users Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Blocked Users</h2>
-          
-          {blockedConnections.length === 0 ? (
-            <p className="text-gray-500">You haven't blocked any users</p>
+        </CardContent>
+      </Card>
+      
+      <Card className="mb-8 border-green-100">
+        <CardHeader className="bg-green-50">
+          <CardTitle className="text-green-800">Connection Management</CardTitle>
+          <CardDescription>Manage your connections</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {connections.length === 0 ? (
+            <p className="text-center text-gray-500 py-4">You don't have any connections yet</p>
           ) : (
             <div className="space-y-4">
-              {blockedConnections.map(connection => (
-                <div 
-                  key={connection.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
+              {connections.map(connection => (
+                <div key={connection.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
                   <div className="flex items-center">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>
-                        {connection.name.charAt(0)}
+                    <Avatar className="h-10 w-10 mr-3">
+                      <AvatarFallback className="bg-gradient-to-r from-green-400 to-green-500 text-white">
+                        {getInitials(connection.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="ml-3 font-medium">{connection.name}</span>
+                    <div>
+                      <h4 className="font-medium">{connection.name}</h4>
+                      <div className="flex items-center text-xs text-gray-500 space-x-2 mt-1">
+                        {connection.muted && (
+                          <span className="flex items-center">
+                            <BellOff size={12} className="mr-1" />
+                            Messages muted
+                          </span>
+                        )}
+                        {connection.callsMuted && (
+                          <span className="flex items-center">
+                            <VolumeX size={12} className="mr-1" />
+                            Calls muted
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeConnection(connection.id)}
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-gray-500" 
+                      onClick={() => muteConnection(connection.id)}
+                    >
+                      <BellOff size={16} className="mr-1" />
+                      {connection.muted ? 'Unmute' : 'Mute'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-gray-500" 
+                      onClick={() => muteConnectionCalls(connection.id)}
+                    >
+                      <VolumeX size={16} className="mr-1" />
+                      {connection.callsMuted ? 'Unmute Calls' : 'Mute Calls'}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
+                          <Trash2 size={16} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Connection</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove {connection.name}? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => removeConnection(connection.id)}
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-        
-        {/* Danger Zone */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-red-500">Danger Zone</h2>
-          
+        </CardContent>
+      </Card>
+      
+      <Card className="mb-8 border-red-100">
+        <CardHeader className="bg-red-50">
+          <CardTitle className="text-red-800">Danger Zone</CardTitle>
+          <CardDescription>Irreversible actions</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
+              <Button variant="destructive">Log Out</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Log Out</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete your account and remove all your connections. 
-                  This action cannot be undone.
+                  Are you sure you want to log out of NetworX?
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}>
-                  Delete Account
+                <AlertDialogAction 
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={logout}
+                >
+                  Log Out
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          
-          <p className="mt-2 text-xs text-gray-500">
-            Deleting your account will remove all your data and connections permanently.
-          </p>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

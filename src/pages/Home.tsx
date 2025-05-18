@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConnection, Connection, CodeSettings } from '@/contexts/ConnectionContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   User, 
   Settings, 
@@ -35,10 +36,12 @@ import {
   MessageCircle,
   BellOff,
   Volume,
-  VolumeX
+  VolumeX,
+  ArrowLeft
 } from 'lucide-react';
 import ChatView from '../components/ChatView';
 import { Slider } from '@/components/ui/slider';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Tooltip,
   TooltipContent,
@@ -48,7 +51,9 @@ import {
 
 const Home = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
+  const isMobile = useIsMobile();
   const { 
     connections, 
     activeConnection, 
@@ -70,6 +75,21 @@ const Home = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showCodeSettings, setShowCodeSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState<CodeSettings>(defaultCodeSettings);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(true);
+
+  // Get active connection ID from URL for mobile view
+  const activeChatId = searchParams.get('chat');
+  
+  // Set active connection based on URL param when on mobile
+  useEffect(() => {
+    if (isMobile && activeChatId && connections.length > 0) {
+      const connection = connections.find(conn => conn.id === activeChatId);
+      if (connection) {
+        setActiveConnection(connection);
+        markMessagesAsRead(connection.id);
+      }
+    }
+  }, [activeChatId, connections, isMobile, markMessagesAsRead, setActiveConnection]);
 
   // Auto-generate a code when the page loads if no code exists
   useEffect(() => {
@@ -101,6 +121,17 @@ const Home = () => {
   const handleConnectionClick = (connection: Connection) => {
     setActiveConnection(connection);
     markMessagesAsRead(connection.id);
+    
+    // For mobile, navigate to chat view
+    if (isMobile) {
+      setShowMobileSidebar(false);
+      setSearchParams({ chat: connection.id });
+    }
+  };
+
+  const handleBackToContacts = () => {
+    setShowMobileSidebar(true);
+    setSearchParams({});
   };
 
   const handleSettings = () => {
@@ -147,6 +178,301 @@ const Home = () => {
     return `${minutesLeft}:${secondsLeft.toString().padStart(2, '0')}`;
   };
 
+  // Mobile layout or desktop layout
+  if (isMobile) {
+    // Show chat view if we have an active connection and not showing sidebar
+    if (activeConnection && !showMobileSidebar) {
+      return <ChatView connection={activeConnection} />;
+    }
+    
+    // Otherwise show connection list
+    return (
+      <div className="flex flex-col h-full bg-green-50">
+        {/* Connection code card */}
+        <div className="p-4 bg-white border-b border-green-100">
+          <Card className="overflow-hidden bg-gradient-to-r from-green-100 to-green-50 border-green-200">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-base flex justify-between items-center">
+                <span className="flex items-center gap-1">
+                  <MessageCircle size={18} className="text-green-600" />
+                  Connection Code
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setTempSettings({...defaultCodeSettings});
+                    setShowCodeSettings(true);
+                  }}
+                  className="h-7 w-7 p-0"
+                >
+                  <Settings className="h-4 w-4 text-green-800" />
+                </Button>
+              </CardTitle>
+              <CardDescription className="text-xs text-green-700">
+                Share this code to connect with someone
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-white rounded-lg border border-green-200 flex-grow text-center">
+                  <span className="text-2xl font-bold tracking-widest text-green-700">
+                    {currentCode?.code || '------'}
+                  </span>
+                </div>
+                <Button 
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handleGenerateCode}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  New
+                </Button>
+              </div>
+              
+              {currentCode && (
+                <div className="mt-2 text-xs text-center flex items-center justify-between text-green-800">
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{formatTimeLeft()}</span>
+                  </div>
+                  <span>Uses: {currentCode.usesLeft}/{currentCode.settings.maxUses}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <div className="mt-3 flex items-center">
+            <div className="flex-grow">
+              <Input 
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder="Enter someone's code"
+                className="border-green-200 focus:border-green-400"
+                maxLength={6}
+              />
+            </div>
+            <Button 
+              className="ml-2 bg-green-500 hover:bg-green-600" 
+              onClick={handleVerifyCode} 
+              disabled={isVerifying || codeInput.length < 6}
+            >
+              <Send className="h-4 w-4 mr-1" />
+              Connect
+            </Button>
+          </div>
+        </div>
+
+        {/* Connections */}
+        <div className="flex-1 overflow-y-auto bg-white">
+          <div className="p-4 border-b border-green-50">
+            <h2 className="font-medium text-sm text-green-800">Recent Chats</h2>
+          </div>
+          
+          {connections.length === 0 ? (
+            <div className="p-6 text-center">
+              <User className="mx-auto h-12 w-12 text-green-300" />
+              <h3 className="mt-2 text-sm font-semibold text-gray-900">No connections</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Share your code with someone to start chatting.
+              </p>
+            </div>
+          ) : (
+            connections.map(connection => (
+              <div 
+                key={connection.id}
+                className={`flex items-center justify-between p-4 cursor-pointer hover:bg-green-50 border-b border-green-50 ${
+                  activeConnection?.id === connection.id ? 'bg-green-100' : ''
+                }`}
+                onClick={() => handleConnectionClick(connection)}
+              >
+                <div className="flex items-center flex-1">
+                  <Avatar className="h-12 w-12 border border-green-100">
+                    <AvatarImage src={connection.profileImage} />
+                    <AvatarFallback className="bg-gradient-to-r from-green-400 to-green-500 text-white">
+                      {getInitials(connection.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="ml-3 overflow-hidden">
+                    <div className="flex items-center">
+                      <p className="font-medium text-green-900">{connection.name}</p>
+                      {connection.muted && (
+                        <BellOff size={14} className="ml-1 text-gray-400" />
+                      )}
+                      {connection.callsMuted && (
+                        <VolumeX size={14} className="ml-1 text-gray-400" />
+                      )}
+                    </div>
+                    <p className={`text-sm ${connection.muted ? 'text-gray-400' : 'text-green-600'} truncate`}>
+                      {connection.lastMessage?.content}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  {connection.lastMessage && (
+                    <span className="text-xs text-green-500">
+                      {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  )}
+                  {getUnreadCount(connection.id) > 0 && (
+                    <span className="bg-green-500 text-white text-xs rounded-full px-2 py-0.5 mt-1 font-medium">
+                      {getUnreadCount(connection.id)}
+                    </span>
+                  )}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}>
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        muteConnection(connection.id);
+                      }} 
+                      className="flex items-center"
+                    >
+                      <BellOff className="mr-2 h-4 w-4" />
+                      {connection.muted ? 'Unmute messages' : 'Mute messages'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        muteConnectionCalls(connection.id);
+                      }} 
+                      className="flex items-center"
+                    >
+                      {connection.callsMuted ? (
+                        <>
+                          <Volume className="mr-2 h-4 w-4" />
+                          Unmute calls
+                        </>
+                      ) : (
+                        <>
+                          <VolumeX className="mr-2 h-4 w-4" />
+                          Mute calls
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeConnection(connection.id);
+                      }} 
+                      className="text-red-600"
+                    >
+                      Remove Connection
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))
+          )}
+        </div>
+        
+        {/* Code Settings Dialog */}
+        <Dialog open={showCodeSettings} onOpenChange={setShowCodeSettings}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Connection Code Settings</DialogTitle>
+              <DialogDescription>
+                Customize how your connection codes work
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-medium">
+                      Code Expiration Time
+                    </label>
+                    <span className="text-sm text-gray-500">
+                      {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      id="useExpiration"
+                      className="mr-2"
+                      checked={tempSettings.expirationMinutes !== null}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // If checked, set default value of 5 minutes
+                          setTempSettings({...tempSettings, expirationMinutes: 5});
+                        } else {
+                          // If unchecked, set to null (no expiration)
+                          setTempSettings({...tempSettings, expirationMinutes: null});
+                        }
+                      }}
+                    />
+                    <label htmlFor="useExpiration" className="text-sm">Enable expiration time</label>
+                  </div>
+                  
+                  {tempSettings.expirationMinutes !== null && (
+                    <Slider
+                      value={[tempSettings.expirationMinutes]}
+                      min={1}
+                      max={60}
+                      step={1}
+                      className="bg-green-100"
+                      onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
+                    />
+                  )}
+                </div>
+                
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-medium">
+                      Maximum Uses Per Code
+                    </label>
+                    <span className="text-sm text-gray-500">
+                      {tempSettings.maxUses} uses
+                    </span>
+                  </div>
+                  <Slider
+                    value={[tempSettings.maxUses]}
+                    min={1}
+                    max={10}
+                    step={1}
+                    className="bg-green-100"
+                    onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
+                  />
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <p className="text-xs text-gray-500">
+                  These settings will apply to all new codes you generate. 
+                </p>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCodeSettings(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveCodeSettings} className="bg-green-600 hover:bg-green-700">
+                Save Settings
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="flex h-screen bg-blue-50">
       {/* Sidebar */}

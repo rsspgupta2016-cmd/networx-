@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import { Connection } from '@/contexts/ConnectionContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, User, BellOff, VolumeX } from 'lucide-react';
+import { ArrowLeft, Send, User, BellOff, VolumeX } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type ChatViewProps = {
   connection: Connection;
@@ -13,6 +16,9 @@ type ChatViewProps = {
 
 const ChatView = ({ connection }: ChatViewProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const { getMessagesForConnection, sendMessage, markMessagesAsRead } = useChat();
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -34,6 +40,12 @@ const ChatView = ({ connection }: ChatViewProps) => {
     if (messageInput.trim()) {
       sendMessage(connection.id, messageInput);
       setMessageInput('');
+    }
+  };
+
+  const handleBackToChats = () => {
+    if (isMobile) {
+      setSearchParams({});
     }
   };
   
@@ -80,6 +92,16 @@ const ChatView = ({ connection }: ChatViewProps) => {
     <div className="flex flex-col h-full">
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md">
+        {isMobile && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-white hover:bg-green-600 mr-2"
+            onClick={handleBackToChats}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <div className="flex items-center">
           <Avatar className="h-10 w-10 border-2 border-white">
             <AvatarImage src={connection.profileImage} />
