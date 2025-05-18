@@ -1,190 +1,242 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useConnection } from '@/contexts/ConnectionContext';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { BellOff, Trash2, VolumeX } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Bell, 
+  VolumeX, 
+  Lock, 
+  ChevronRight, 
+  Trash, 
+  Info, 
+  LogOut, 
+  User,
+  CreditCard,
+  Sparkles
+} from 'lucide-react';
+import InterestsSelector from '@/components/InterestsSelector';
 
 const Settings = () => {
-  const { user, logout } = useAuth();
-  const { connections, removeConnection, muteConnection, muteConnectionCalls } = useConnection();
+  const { user, logout, updateUserProfile } = useAuth();
+  const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [showInterestsEditor, setShowInterestsEditor] = useState(false);
+  const [interests, setInterests] = useState<string[]>(user?.interests || []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      await updateUserProfile({ displayName });
+      // Success notification could be added here
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleUpdateInterests = async (selectedInterests: string[]) => {
+    setIsSubmitting(true);
+    
+    try {
+      setInterests(selectedInterests);
+      await updateUserProfile({ interests: selectedInterests });
+      setShowInterestsEditor(false);
+      // Success notification could be added here
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-8 text-green-800">Account Settings</h1>
-      
-      <Card className="mb-8 border-green-100">
-        <CardHeader className="bg-green-50">
-          <CardTitle className="text-green-800">Your Profile</CardTitle>
-          <CardDescription>Your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex items-center mb-6">
-            <Avatar className="h-16 w-16 mr-4 bg-green-600 text-white text-xl">
-              <AvatarFallback>{user?.displayName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="text-xl font-semibold">{user?.displayName}</h3>
-              <p className="text-sm text-gray-500">Account created on {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Identity Code</label>
-              <div className="bg-gray-100 p-2 rounded font-mono text-sm">{user?.identityCode || 'NX-XXXXX'}</div>
-              <p className="mt-1 text-xs text-gray-500">This is your unique identifier in the NetworX system</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="mb-8 border-green-100">
-        <CardHeader className="bg-green-50">
-          <CardTitle className="text-green-800">Connection Management</CardTitle>
-          <CardDescription>Manage your connections</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {connections.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">You don't have any connections yet</p>
-          ) : (
-            <div className="space-y-4">
-              {connections.map(connection => (
-                <div key={connection.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
-                  <div className="flex items-center">
-                    <Avatar className="h-10 w-10 mr-3">
-                      <AvatarFallback className="bg-gradient-to-r from-green-400 to-green-500 text-white">
-                        {getInitials(connection.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium">{connection.name}</h4>
-                      <div className="flex items-center text-xs text-gray-500 space-x-2 mt-1">
-                        {connection.muted && (
-                          <span className="flex items-center">
-                            <BellOff size={12} className="mr-1" />
-                            Messages muted
-                          </span>
-                        )}
-                        {connection.callsMuted && (
-                          <span className="flex items-center">
-                            <VolumeX size={12} className="mr-1" />
-                            Calls muted
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-gray-500" 
-                      onClick={() => muteConnection(connection.id)}
-                    >
-                      <BellOff size={16} className="mr-1" />
-                      {connection.muted ? 'Unmute' : 'Mute'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-gray-500" 
-                      onClick={() => muteConnectionCalls(connection.id)}
-                    >
-                      <VolumeX size={16} className="mr-1" />
-                      {connection.callsMuted ? 'Unmute Calls' : 'Mute Calls'}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700">
-                          <Trash2 size={16} />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove Connection</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove {connection.name}? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() => removeConnection(connection.id)}
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+    <div className="container mx-auto max-w-md p-4">
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Manage your personal information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="displayName">
+                  Display Name
+                </label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Identity Code</label>
+                <div className="p-2 bg-gray-100 rounded text-sm font-mono">
+                  {user?.identityCode || 'NX-XXXXX'}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card className="mb-8 border-red-100">
-        <CardHeader className="bg-red-50">
-          <CardTitle className="text-red-800">Danger Zone</CardTitle>
-          <CardDescription>Irreversible actions</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">Log Out</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Log Out</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to log out of NetworX?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={logout}
+                <p className="text-xs text-gray-500">
+                  This is your unique identifier on NetworX. It can be used if someone needs to report an issue.
+                </p>
+              </div>
+              
+              <Button type="submit" disabled={isSubmitting}>
+                Save Changes
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Discovery Preferences</CardTitle>
+            <CardDescription>Manage your interests for the Discovery section</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!showInterestsEditor ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium">Personalized Offers</span>
+                  </div>
+                  <Switch checked={interests.length > 0} />
+                </div>
+                
+                <div className="pt-2">
+                  <p className="text-sm mb-2">Your interests:</p>
+                  {interests.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {interests.map(interest => {
+                        const category = interestCategories.find(cat => cat.id === interest);
+                        return category ? (
+                          <div key={interest} className="bg-green-100 text-green-800 text-xs rounded-full px-3 py-1 flex items-center">
+                            {category.icon}
+                            {category.name}
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No interests selected</p>
+                  )}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={() => setShowInterestsEditor(true)}
                 >
-                  Log Out
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
+                  Update Interests
+                </Button>
+              </div>
+            ) : (
+              <InterestsSelector 
+                selectedInterests={interests}
+                onChange={handleUpdateInterests}
+                showSkip={false}
+              />
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Security</CardTitle>
+            <CardDescription>Manage your security settings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <Lock className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">Privacy settings</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <Bell className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">Notification preferences</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <VolumeX className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">Call settings</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Support</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <Info className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">Help Center</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <Trash className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-red-500">Delete Account</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              variant="ghost" 
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 };
+
+// Import interestCategories from Discovery.tsx
+import { interestCategories } from '@/pages/Discovery';
 
 export default Settings;

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, User, Settings, ArrowLeft } from 'lucide-react';
+import { MessageCircle, User, Settings, ArrowLeft, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   
   // Check if current route is chat view
   const isChatView = location.pathname === '/home' && location.search.includes('chat');
-  
+  // Check if we're in discovery section
+  const isDiscoverySection = location.pathname === '/discovery';
   // Check if we're on login/signup routes
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
   
@@ -40,7 +41,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       {!isAuthPage && (
         <header className="bg-green-500 text-white p-4 flex items-center justify-between">
           <div className="flex items-center">
-            {location.pathname !== '/home' && (
+            {location.pathname !== '/home' && location.pathname !== '/discovery' && (
               <Button 
                 variant="ghost" 
                 className="mr-2 text-white hover:bg-green-600 p-1" 
@@ -108,6 +109,15 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           >
             <MessageCircle size={24} />
             <span className="text-xs mt-1">Chats</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            className={`flex flex-col items-center ${isDiscoverySection ? 'text-green-600' : 'text-gray-500'}`}
+            onClick={() => navigate('/discovery')}
+          >
+            <Sparkles size={24} />
+            <span className="text-xs mt-1">Discovery</span>
           </Button>
           
           <Button 

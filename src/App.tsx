@@ -16,8 +16,9 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import AdminPanel from "./components/AdminPanel"; // Import the AdminPanel component
+import AdminPanel from "./components/AdminPanel";
 import MobileLayout from "./components/MobileLayout";
+import Discovery from "./pages/Discovery"; // Import the Discovery page
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,16 @@ const App = () => {
                         element={
                           <ProtectedRoute>
                             <Home />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      {/* Discovery Route */}
+                      <Route 
+                        path="/discovery" 
+                        element={
+                          <ProtectedRoute>
+                            <Discovery />
                           </ProtectedRoute>
                         } 
                       />
@@ -88,6 +99,16 @@ const App = () => {
                       element={
                         <ProtectedRoute>
                           <Home />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    {/* Discovery Route */}
+                    <Route 
+                      path="/discovery" 
+                      element={
+                        <ProtectedRoute>
+                          <Discovery />
                         </ProtectedRoute>
                       } 
                     />

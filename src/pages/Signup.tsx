@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
+import InterestsSelector from '@/components/InterestsSelector';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -13,7 +14,8 @@ const Signup = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [step, setStep] = useState<'phone' | 'verification' | 'profile'>('phone');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [step, setStep] = useState<'phone' | 'verification' | 'profile' | 'interests'>('phone');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -58,9 +60,27 @@ const Signup = () => {
       return;
     }
     
+    // Move to interests selection
+    setStep('interests');
+  };
+  
+  const handleSignupComplete = async (selectedInterests: string[]) => {
     try {
       setIsSubmitting(true);
-      await signup(phoneNumber, displayName);
+      setInterests(selectedInterests);
+      await signup(phoneNumber, displayName, selectedInterests);
+      navigate('/home');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleSkipInterests = async () => {
+    try {
+      setIsSubmitting(true);
+      await signup(phoneNumber, displayName, []);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -78,6 +98,7 @@ const Signup = () => {
             {step === 'phone' && 'Create a new account'}
             {step === 'verification' && 'Enter the verification code sent to your phone'}
             {step === 'profile' && 'Set up your profile'}
+            {step === 'interests' && 'Almost done!'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -169,13 +190,22 @@ const Signup = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Creating account</>
+                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Processing</>
                   ) : (
-                    'Complete Sign Up'
+                    'Continue'
                   )}
                 </Button>
               </div>
             </form>
+          )}
+          
+          {step === 'interests' && (
+            <InterestsSelector 
+              selectedInterests={interests}
+              onChange={handleSignupComplete}
+              onSkip={handleSkipInterests}
+              showSkip={true}
+            />
           )}
         </CardContent>
         <CardFooter className="flex justify-center">
