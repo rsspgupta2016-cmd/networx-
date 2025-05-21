@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,7 +39,8 @@ import {
   VolumeX,
   ArrowLeft,
   Users,
-  Building
+  Building,
+  Ticket
 } from 'lucide-react';
 import ChatView from '../components/ChatView';
 import { Slider } from '@/components/ui/slider';
@@ -51,6 +51,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Extend Connection interface to include isIndustry property
+declare module '@/contexts/ConnectionContext' {
+  interface Connection {
+    isIndustry?: boolean;
+    identityCode?: string;
+  }
+}
 
 // Chat section types
 enum ChatSection {
@@ -300,7 +308,7 @@ const Home = () => {
             >
               <div className="flex items-center justify-center gap-2">
                 <Building size={16} />
-                <span>Industry</span>
+                <span>Industry/Perks</span>
               </div>
             </button>
           </div>
@@ -310,7 +318,7 @@ const Home = () => {
         <div className="flex-1 overflow-y-auto bg-[#0F1628]">
           <div className="p-4 border-b border-[#232e48]">
             <h2 className="font-medium text-sm text-networx-light">
-              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry Connections'}
+              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry/Perks Connections'}
             </h2>
           </div>
           
@@ -319,7 +327,7 @@ const Home = () => {
               {activeSection === ChatSection.PERSONAL ? (
                 <User className="mx-auto h-12 w-12 text-[#2A3A57]" />
               ) : (
-                <Building className="mx-auto h-12 w-12 text-[#2A3A57]" />
+                <Ticket className="mx-auto h-12 w-12 text-[#2A3A57]" />
               )}
               <h3 className="mt-2 text-sm font-semibold text-networx-light">
                 {activeSection === ChatSection.PERSONAL 
@@ -652,7 +660,7 @@ const Home = () => {
             >
               <div className="flex items-center justify-center gap-2">
                 <Building size={16} />
-                <span>Industry</span>
+                <span>Industry/Perks</span>
               </div>
             </button>
           </div>
@@ -662,7 +670,7 @@ const Home = () => {
         <div className="flex-1 overflow-y-auto border-t border-[#232e48]">
           <div className="p-4 border-b border-[#232e48]">
             <h2 className="font-medium text-sm text-networx-light">
-              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry Connections'}
+              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry/Perks Connections'}
             </h2>
           </div>
           
@@ -671,7 +679,7 @@ const Home = () => {
               {activeSection === ChatSection.PERSONAL ? (
                 <User className="mx-auto h-12 w-12 text-[#2A3A57]" />
               ) : (
-                <Building className="mx-auto h-12 w-12 text-[#2A3A57]" />
+                <Ticket className="mx-auto h-12 w-12 text-[#2A3A57]" />
               )}
               <h3 className="mt-2 text-sm font-semibold text-networx-light">
                 {activeSection === ChatSection.PERSONAL 

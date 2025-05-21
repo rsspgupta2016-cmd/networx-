@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Tag, Coffee, Shirt, Car, Plane, Smartphone, BookOpen } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 // Demo offers data
 const demoOffers = [
@@ -99,37 +100,37 @@ const Discovery = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-green-50">
+    <div className="flex flex-col h-full bg-networx-dark">
       {/* Offers settings card */}
       <div className="p-4">
-        <Card className="bg-white">
+        <Card className="networx-card">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-lg">Discovery</CardTitle>
+              <CardTitle className="text-lg text-networx-light">Discovery</CardTitle>
               <Switch 
                 checked={offersEnabled} 
                 onCheckedChange={setOffersEnabled} 
               />
             </div>
-            <CardDescription>
+            <CardDescription className="text-networx-light/70">
               Curated offers based on your interests
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-sm text-gray-500 mb-2">
+            <div className="text-sm text-networx-light/80 mb-2">
               <p>You will receive offers from the categories you've selected. No personal information is shared with partners.</p>
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
               {user?.interests?.map(interest => (
-                <div key={interest} className="bg-green-100 text-green-800 text-xs rounded-full px-3 py-1 flex items-center">
+                <Badge key={interest} variant="outline" className="bg-[#1C2A41] text-networx-light border-[#232e48] px-3 py-1 flex items-center">
                   {interestCategories.find(cat => cat.id === interest)?.icon}
                   {interestCategories.find(cat => cat.id === interest)?.name}
-                </div>
+                </Badge>
               )) || (
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="text-xs"
+                  className="text-xs bg-[#1C2A41] text-networx-light border-[#232e48] hover:bg-[#283a56]"
                   onClick={() => window.location.href = '/settings'}
                 >
                   Select interests
@@ -144,40 +145,40 @@ const Discovery = () => {
       <div className="flex-1 overflow-auto">
         {offersEnabled ? (
           demoOffers.map((offer) => (
-            <div key={offer.id} className="p-4 border-b border-gray-100">
+            <div key={offer.id} className="p-4 border-b border-[#232e48]">
               <div className="flex items-start">
                 <Avatar className="h-10 w-10 mr-3">
                   <AvatarImage src={offer.image} />
-                  <AvatarFallback className="bg-gray-100">
+                  <AvatarFallback className="bg-[#1C2A41] border border-[#232e48] text-networx-light">
                     {offer.icon}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-gray-900">{offer.sender}</h3>
-                      <span className="inline-flex items-center bg-green-100 text-green-800 text-xs rounded px-2 py-0.5 mt-0.5">
+                      <h3 className="font-medium text-networx-light">{offer.sender}</h3>
+                      <Badge variant="outline" className="inline-flex items-center bg-[#1C2A41] text-networx-light border-[#232e48] text-xs mt-0.5">
                         <Tag size={12} className="mr-1" /> {offer.category}
-                      </span>
+                      </Badge>
                     </div>
-                    <span className="text-xs text-gray-500">{formatTime(offer.timestamp)}</span>
+                    <span className="text-xs text-networx-light/50">{formatTime(offer.timestamp)}</span>
                   </div>
-                  <h4 className="font-medium mt-2">{offer.title}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{offer.description}</p>
+                  <h4 className="font-medium mt-2 text-networx-light">{offer.title}</h4>
+                  <p className="text-sm text-networx-light/80 mt-1">{offer.description}</p>
                 </div>
               </div>
             </div>
           ))
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-center p-4">
-            <Tag className="h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-xl font-medium text-gray-800">Discovery is turned off</h3>
-            <p className="text-sm text-gray-500 mt-2 max-w-xs">
+            <Tag className="h-12 w-12 text-[#2A3A57] mb-4" />
+            <h3 className="text-xl font-medium text-networx-light">Discovery is turned off</h3>
+            <p className="text-sm text-networx-light/70 mt-2 max-w-xs">
               Enable Discovery to see personalized offers based on your interests
             </p>
             <Button 
               variant="outline" 
-              className="mt-4"
+              className="mt-4 bg-[#1C2A41] text-networx-light border-[#232e48] hover:bg-[#283a56]"
               onClick={() => setOffersEnabled(true)}
             >
               Turn on Discovery
