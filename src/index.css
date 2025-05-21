@@ -5,33 +5,33 @@
 
 @layer base {
   :root {
-    --background: 265 40% 98%;
-    --foreground: 265 84% 9%;
+    --background: 222 30% 10%;
+    --foreground: 220 10% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 265 84% 4.9%;
+    --card: 222 30% 8%;
+    --card-foreground: 220 10% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 265 84% 4.9%;
+    --popover: 222 30% 8%;
+    --popover-foreground: 220 10% 98%;
 
-    --primary: 265 83% 75%;
-    --primary-foreground: 265 40% 98%;
+    --primary: 355 100% 68%;
+    --primary-foreground: 220 10% 98%;
 
-    --secondary: 266 71% 54%;
-    --secondary-foreground: 265 40% 98%;
+    --secondary: 355 70% 60%;
+    --secondary-foreground: 220 10% 98%;
 
-    --muted: 265 40% 96.1%;
-    --muted-foreground: 265 16.3% 46.9%;
+    --muted: 222 30% 15%;
+    --muted-foreground: 220 10% 70%;
 
-    --accent: 267 100% 92%;
-    --accent-foreground: 265 47.4% 11.2%;
+    --accent: 355 100% 88%;
+    --accent-foreground: 222 45% 15%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 265 40% 98%;
+    --destructive-foreground: 220 10% 98%;
 
-    --border: 265 31.8% 91.4%;
-    --input: 265 31.8% 91.4%;
-    --ring: 265 83% 75%;
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 355 100% 68%;
 
     --radius: 0.75rem;
   }
@@ -41,16 +41,16 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-networx-dark text-networx-light;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   .networx-gradient {
-    background: linear-gradient(135deg, #9B87F5 0%, #7E69AB 100%);
+    background: linear-gradient(135deg, #0B1120 0%, #162039 100%);
   }
 
   .networx-card {
-    @apply bg-white rounded-lg shadow-md border border-purple-100;
+    @apply bg-card rounded-lg shadow-md border border-[#232e48];
   }
 }
 
@@ -60,21 +60,21 @@
   }
 
   .chat-bubble-sent {
-    @apply chat-bubble bg-purple-100 text-purple-900 ml-auto rounded-br-none;
+    @apply chat-bubble bg-networx-primary text-white ml-auto rounded-br-none;
   }
 
   .chat-bubble-sent:after {
     content: '';
-    @apply absolute bottom-0 right-[-8px] border-8 border-transparent border-l-purple-100 border-b-purple-100;
+    @apply absolute bottom-0 right-[-8px] border-8 border-transparent border-l-networx-primary border-b-networx-primary;
   }
 
   .chat-bubble-received {
-    @apply chat-bubble bg-white text-purple-900 rounded-bl-none;
+    @apply chat-bubble bg-[#1C2A41] text-white rounded-bl-none;
   }
 
   .chat-bubble-received:after {
     content: '';
-    @apply absolute bottom-0 left-[-8px] border-8 border-transparent border-r-white border-b-white;
+    @apply absolute bottom-0 left-[-8px] border-8 border-transparent border-r-[#1C2A41] border-b-[#1C2A41];
   }
 
   .animation-pulse {
@@ -95,25 +95,41 @@
   }
   
   .message-date-separator-inner {
-    @apply px-3 py-1 bg-purple-100 rounded-full text-xs text-purple-600 font-medium;
+    @apply px-3 py-1 bg-[#1C2A41] rounded-full text-xs text-networx-primary font-medium;
   }
 
   .code-card {
-    @apply bg-gradient-to-r from-purple-100 to-purple-50 border border-purple-200 rounded-xl overflow-hidden;
+    @apply bg-gradient-to-r from-[#1C2A41] to-[#0F1729] border border-[#232e48] rounded-xl overflow-hidden;
   }
 
   .connection-item {
-    @apply flex items-center justify-between p-4 cursor-pointer hover:bg-purple-50 border-b border-purple-100 transition-colors duration-150;
+    @apply flex items-center justify-between p-4 cursor-pointer hover:bg-[#121A2F] border-b border-[#232e48] transition-colors duration-150;
   }
 
   .connection-item-active {
-    @apply bg-purple-100;
+    @apply bg-[#1C2A41];
+  }
+
+  .chat-section-toggle {
+    @apply flex rounded-xl overflow-hidden border border-[#232e48] mb-4;
+  }
+
+  .chat-section-button {
+    @apply py-2 px-4 text-sm font-medium flex-1 text-center transition-colors;
+  }
+
+  .chat-section-button-active {
+    @apply bg-networx-primary text-white;
+  }
+
+  .chat-section-button-inactive {
+    @apply bg-[#1C2A41] text-white hover:bg-[#283a56];
   }
 }
 
-/* Whatsapp-like animated background */
+/* Dark mode whatsapp-like animated background */
 .whatsapp-bg {
-  background-color: #F8F5FF;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='100' viewBox='0 0 600 100'%3E%3Cg stroke='%23D6BCFA' stroke-width='0' stroke-miterlimit='10' %3E%3Ccircle fill='%23D6BCFA' cx='0' cy='0' r='50'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: #0B1120;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='100' viewBox='0 0 600 100'%3E%3Cg stroke='%231C2A41' stroke-width='0' stroke-miterlimit='10' %3E%3Ccircle fill='%231C2A41' cx='0' cy='0' r='50'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 300px;
 }

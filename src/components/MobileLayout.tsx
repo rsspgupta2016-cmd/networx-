@@ -36,7 +36,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-purple-50">
+    <div className="flex flex-col h-screen bg-networx-dark">
       {/* Don't show header on login/signup */}
       {!isAuthPage && (
         <header className="networx-gradient text-white p-4 flex items-center justify-between">
@@ -44,7 +44,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
             {location.pathname !== '/home' && location.pathname !== '/discovery' && (
               <Button 
                 variant="ghost" 
-                className="mr-2 text-white hover:bg-purple-600/30 p-1" 
+                className="mr-2 text-white hover:bg-[#1c2a41]/30 p-1" 
                 onClick={handleBack}
               >
                 <ArrowLeft size={24} />
@@ -57,11 +57,11 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
             {user && (
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-purple-600/30">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-[#1c2a41]/30">
                     <User size={24} />
                   </Button>
                 </SheetTrigger>
-                <SheetContent className="bg-white">
+                <SheetContent className="bg-networx-dark border-l border-[#232e48]">
                   <div className="flex flex-col h-full">
                     <div className="p-4 networx-gradient text-white mb-4 -mt-6 -mx-6">
                       <h2 className="text-xl font-bold">{user.displayName}</h2>
@@ -71,7 +71,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
                     <div className="space-y-4">
                       <Button 
                         variant="ghost" 
-                        className="w-full justify-start" 
+                        className="w-full justify-start text-white" 
                         onClick={() => navigate('/settings')}
                       >
                         <Settings size={18} className="mr-2" />
@@ -80,7 +80,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
                       
                       <Button 
                         variant="ghost" 
-                        className="w-full justify-start text-red-500 hover:text-red-600" 
+                        className="w-full justify-start text-networx-primary hover:text-networx-accent" 
                         onClick={handleLogout}
                       >
                         Logout
@@ -101,10 +101,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       
       {/* Mobile navigation bar - only show when authenticated and not on auth pages */}
       {user && !isAuthPage && (
-        <nav className="bg-white border-t border-purple-200 p-2 flex justify-around">
+        <nav className="bg-[#0F1628] border-t border-[#232e48] p-2 flex justify-around">
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-networx-primary' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-networx-primary' : 'text-gray-400'}`}
             onClick={() => navigate('/home')}
           >
             <MessageCircle size={24} />
@@ -113,7 +113,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${isDiscoverySection ? 'text-networx-primary' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${isDiscoverySection ? 'text-networx-primary' : 'text-gray-400'}`}
             onClick={() => navigate('/discovery')}
           >
             <Sparkles size={24} />
@@ -122,7 +122,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-networx-primary' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-networx-primary' : 'text-gray-400'}`}
             onClick={() => navigate('/settings')}
           >
             <Settings size={24} />

@@ -38,7 +38,9 @@ import {
   BellOff,
   Volume,
   VolumeX,
-  ArrowLeft
+  ArrowLeft,
+  Users,
+  Building
 } from 'lucide-react';
 import ChatView from '../components/ChatView';
 import { Slider } from '@/components/ui/slider';
@@ -49,6 +51,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Chat section types
+enum ChatSection {
+  PERSONAL = 'personal',
+  INDUSTRY = 'industry'
+}
 
 const Home = () => {
   const navigate = useNavigate();
@@ -77,6 +85,7 @@ const Home = () => {
   const [showCodeSettings, setShowCodeSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState<CodeSettings>(defaultCodeSettings);
   const [showMobileSidebar, setShowMobileSidebar] = useState(true);
+  const [activeSection, setActiveSection] = useState<ChatSection>(ChatSection.PERSONAL);
 
   // Get active connection ID from URL for mobile view
   const activeChatId = searchParams.get('chat');
@@ -179,6 +188,15 @@ const Home = () => {
     return `${minutesLeft}:${secondsLeft.toString().padStart(2, '0')}`;
   };
 
+  // Filter connections based on active section
+  const filteredConnections = connections.filter(connection => {
+    if (activeSection === ChatSection.PERSONAL) {
+      return !connection.isIndustry;
+    } else {
+      return connection.isIndustry;
+    }
+  });
+
   // Mobile layout or desktop layout
   if (isMobile) {
     // Show chat view if we have an active connection and not showing sidebar
@@ -188,14 +206,14 @@ const Home = () => {
     
     // Otherwise show connection list
     return (
-      <div className="flex flex-col h-full bg-purple-50">
+      <div className="flex flex-col h-full bg-networx-dark">
         {/* Connection code card */}
-        <div className="p-4 bg-white border-b border-purple-100">
-          <Card className="overflow-hidden bg-gradient-to-r from-purple-100 to-purple-50 border-purple-200">
+        <div className="p-4 bg-[#0F1628] border-b border-[#232e48]">
+          <Card className="overflow-hidden bg-gradient-to-r from-[#1C2A41] to-[#162039] border-[#232e48]">
             <CardHeader className="pb-2 pt-4">
               <CardTitle className="text-base flex justify-between items-center">
-                <span className="flex items-center gap-1">
-                  <MessageCircle size={18} className="text-purple-600" />
+                <span className="flex items-center gap-1 text-white">
+                  <MessageCircle size={18} className="text-networx-primary" />
                   Connection Code
                 </span>
                 <Button 
@@ -205,19 +223,19 @@ const Home = () => {
                     setTempSettings({...defaultCodeSettings});
                     setShowCodeSettings(true);
                   }}
-                  className="h-7 w-7 p-0"
+                  className="h-7 w-7 p-0 text-white hover:bg-[#1c2a41]/50"
                 >
-                  <Settings className="h-4 w-4 text-purple-800" />
+                  <Settings className="h-4 w-4" />
                 </Button>
               </CardTitle>
-              <CardDescription className="text-xs text-purple-700">
+              <CardDescription className="text-xs text-networx-light/70">
                 Share this code to connect with someone
               </CardDescription>
             </CardHeader>
             <CardContent className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white rounded-lg border border-purple-200 flex-grow text-center">
-                  <span className="text-2xl font-bold tracking-widest text-purple-700">
+                <div className="p-2 bg-[#0B1120] rounded-lg border border-[#232e48] flex-grow text-center">
+                  <span className="text-2xl font-bold tracking-widest text-networx-light">
                     {currentCode?.code || '------'}
                   </span>
                 </div>
@@ -232,7 +250,7 @@ const Home = () => {
               </div>
               
               {currentCode && (
-                <div className="mt-2 text-xs text-center flex items-center justify-between text-purple-800">
+                <div className="mt-2 text-xs text-center flex items-center justify-between text-networx-light/70">
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     <span>{formatTimeLeft()}</span>
@@ -249,7 +267,7 @@ const Home = () => {
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value)}
                 placeholder="Enter someone's code"
-                className="border-purple-200 focus:border-purple-400"
+                className="border-[#232e48] bg-[#121A2F] text-white placeholder:text-gray-500"
                 maxLength={6}
               />
             </div>
@@ -264,31 +282,67 @@ const Home = () => {
           </div>
         </div>
 
+        {/* Chat Section Toggle */}
+        <div className="px-4 pt-4 bg-[#0F1628]">
+          <div className="chat-section-toggle">
+            <button 
+              className={`chat-section-button ${activeSection === ChatSection.PERSONAL ? 'chat-section-button-active' : 'chat-section-button-inactive'}`}
+              onClick={() => setActiveSection(ChatSection.PERSONAL)}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <User size={16} />
+                <span>Personal</span>
+              </div>
+            </button>
+            <button 
+              className={`chat-section-button ${activeSection === ChatSection.INDUSTRY ? 'chat-section-button-active' : 'chat-section-button-inactive'}`}
+              onClick={() => setActiveSection(ChatSection.INDUSTRY)}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Building size={16} />
+                <span>Industry</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Connections */}
-        <div className="flex-1 overflow-y-auto bg-white">
-          <div className="p-4 border-b border-purple-50">
-            <h2 className="font-medium text-sm text-purple-800">Recent Chats</h2>
+        <div className="flex-1 overflow-y-auto bg-[#0F1628]">
+          <div className="p-4 border-b border-[#232e48]">
+            <h2 className="font-medium text-sm text-networx-light">
+              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry Connections'}
+            </h2>
           </div>
           
-          {connections.length === 0 ? (
+          {filteredConnections.length === 0 ? (
             <div className="p-6 text-center">
-              <User className="mx-auto h-12 w-12 text-purple-300" />
-              <h3 className="mt-2 text-sm font-semibold text-purple-900">No connections</h3>
+              {activeSection === ChatSection.PERSONAL ? (
+                <User className="mx-auto h-12 w-12 text-[#2A3A57]" />
+              ) : (
+                <Building className="mx-auto h-12 w-12 text-[#2A3A57]" />
+              )}
+              <h3 className="mt-2 text-sm font-semibold text-networx-light">
+                {activeSection === ChatSection.PERSONAL 
+                  ? 'No personal connections' 
+                  : 'No industry connections'}
+              </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Share your code with someone to start chatting.
+                {activeSection === ChatSection.PERSONAL
+                  ? 'Share your code with someone to start chatting.'
+                  : 'Connect with industry professionals to see offers.'}
               </p>
             </div>
           ) : (
-            connections.map(connection => (
+            filteredConnections.map(connection => (
               <div 
                 key={connection.id}
-                className={`flex items-center justify-between p-4 cursor-pointer hover:bg-purple-50 border-b border-purple-50 ${
-                  activeConnection?.id === connection.id ? 'bg-purple-100' : ''
+                className={`connection-item ${
+                  activeConnection?.id === connection.id ? 'connection-item-active' : ''
                 }`}
                 onClick={() => handleConnectionClick(connection)}
               >
                 <div className="flex items-center flex-1">
-                  <Avatar className="h-12 w-12 border border-purple-100">
+                  <Avatar className="h-12 w-12 border border-[#232e48]">
                     <AvatarImage src={connection.profileImage} />
                     <AvatarFallback className="bg-gradient-to-r from-networx-primary to-networx-secondary text-white">
                       {getInitials(connection.name)}
@@ -296,22 +350,25 @@ const Home = () => {
                   </Avatar>
                   <div className="ml-3 overflow-hidden">
                     <div className="flex items-center">
-                      <p className="font-medium text-purple-900">{connection.name}</p>
+                      <p className="font-medium text-networx-light">{connection.name}</p>
+                      <span className="ml-2 text-xs text-networx-light/50">
+                        {connection.identityCode}
+                      </span>
                       {connection.muted && (
-                        <BellOff size={14} className="ml-1 text-gray-400" />
+                        <BellOff size={14} className="ml-1 text-gray-500" />
                       )}
                       {connection.callsMuted && (
-                        <VolumeX size={14} className="ml-1 text-gray-400" />
+                        <VolumeX size={14} className="ml-1 text-gray-500" />
                       )}
                     </div>
-                    <p className={`text-sm ${connection.muted ? 'text-gray-400' : 'text-purple-600'} truncate`}>
+                    <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
                       {connection.lastMessage?.content}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
                   {connection.lastMessage && (
-                    <span className="text-xs text-purple-500">
+                    <span className="text-xs text-networx-light/50">
                       {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
@@ -326,19 +383,19 @@ const Home = () => {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-[#232e48]" />
                     <DropdownMenuItem 
                       onClick={(e) => {
                         e.stopPropagation();
                         muteConnection(connection.id);
                       }} 
-                      className="flex items-center"
+                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                     >
                       <BellOff className="mr-2 h-4 w-4" />
                       {connection.muted ? 'Unmute messages' : 'Mute messages'}
@@ -348,7 +405,7 @@ const Home = () => {
                         e.stopPropagation();
                         muteConnectionCalls(connection.id);
                       }} 
-                      className="flex items-center"
+                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                     >
                       {connection.callsMuted ? (
                         <>
@@ -362,13 +419,13 @@ const Home = () => {
                         </>
                       )}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-[#232e48]" />
                     <DropdownMenuItem 
                       onClick={(e) => {
                         e.stopPropagation();
                         removeConnection(connection.id);
                       }} 
-                      className="text-red-600"
+                      className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
                     >
                       Remove Connection
                     </DropdownMenuItem>
@@ -381,10 +438,10 @@ const Home = () => {
         
         {/* Code Settings Dialog */}
         <Dialog open={showCodeSettings} onOpenChange={setShowCodeSettings}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md bg-[#121A2F] border-[#232e48] text-networx-light">
             <DialogHeader>
               <DialogTitle>Connection Code Settings</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-networx-light/70">
                 Customize how your connection codes work
               </DialogDescription>
             </DialogHeader>
@@ -396,7 +453,7 @@ const Home = () => {
                     <label className="text-sm font-medium">
                       Code Expiration Time
                     </label>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-networx-light/70">
                       {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
                     </span>
                   </div>
@@ -426,7 +483,7 @@ const Home = () => {
                       min={1}
                       max={60}
                       step={1}
-                      className="bg-purple-100"
+                      className="bg-[#1C2A41]"
                       onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
                     />
                   )}
@@ -437,7 +494,7 @@ const Home = () => {
                     <label className="text-sm font-medium">
                       Maximum Uses Per Code
                     </label>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-networx-light/70">
                       {tempSettings.maxUses} uses
                     </span>
                   </div>
@@ -446,21 +503,22 @@ const Home = () => {
                     min={1}
                     max={10}
                     step={1}
-                    className="bg-purple-100"
+                    className="bg-[#1C2A41]"
                     onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
                   />
                 </div>
               </div>
               
               <div className="pt-2">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-networx-light/70">
                   These settings will apply to all new codes you generate. 
                 </p>
               </div>
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCodeSettings(false)}>
+              <Button variant="outline" onClick={() => setShowCodeSettings(false)}
+                className="border-[#232e48] text-networx-light hover:bg-[#1C2A41] hover:text-networx-light">
                 Cancel
               </Button>
               <Button onClick={handleSaveCodeSettings} className="bg-networx-primary hover:bg-networx-secondary text-white">
@@ -475,39 +533,39 @@ const Home = () => {
 
   // Desktop layout
   return (
-    <div className="flex h-screen bg-purple-50">
+    <div className="flex h-screen bg-networx-dark">
       {/* Sidebar */}
-      <div className="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-purple-200 flex flex-col">
+      <div className="w-full md:w-1/3 lg:w-1/4 bg-[#0F1628] border-r border-[#232e48] flex flex-col">
         {/* User header */}
-        <div className="flex items-center justify-between p-4 border-b border-purple-100 bg-gradient-to-r from-networx-primary to-networx-secondary text-white">
+        <div className="flex items-center justify-between p-4 border-b border-[#232e48] bg-gradient-to-r from-[#0B1120] to-[#162039] text-white">
           <div className="flex items-center">
-            <Avatar className="h-10 w-10 bg-purple-700 border-2 border-white">
-              <AvatarFallback className="bg-purple-800 text-white">{user?.displayName.charAt(0)}</AvatarFallback>
+            <Avatar className="h-10 w-10 bg-[#1C2A41] border-2 border-[#232e48]">
+              <AvatarFallback className="bg-networx-dark text-white">{user?.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="ml-3">
               <h2 className="text-lg font-semibold">{user?.displayName}</h2>
-              <p className="text-xs text-purple-100">
+              <p className="text-xs text-networx-light/70">
                 {user?.identityCode ? `ID: ${user.identityCode}` : 'NetworX'}
               </p>
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button variant="ghost" size="icon" onClick={handleSettings} className="text-white hover:bg-purple-600/30">
+            <Button variant="ghost" size="icon" onClick={handleSettings} className="text-white hover:bg-[#1c2a41]/30">
               <Settings className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white hover:bg-purple-600/30">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white hover:bg-[#1c2a41]/30">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
         {/* Connection code card */}
-        <div className="p-4 bg-white border-b border-purple-100">
-          <Card className="overflow-hidden bg-gradient-to-r from-purple-100 to-purple-50 border-purple-200">
+        <div className="p-4 bg-[#0F1628] border-b border-[#232e48]">
+          <Card className="overflow-hidden bg-gradient-to-r from-[#1C2A41] to-[#162039] border-[#232e48]">
             <CardHeader className="pb-2 pt-4">
               <CardTitle className="text-base flex justify-between items-center">
-                <span className="flex items-center gap-1">
-                  <MessageCircle size={18} className="text-purple-600" />
+                <span className="flex items-center gap-1 text-white">
+                  <MessageCircle size={18} className="text-networx-primary" />
                   Connection Code
                 </span>
                 <Button 
@@ -517,19 +575,19 @@ const Home = () => {
                     setTempSettings({...defaultCodeSettings});
                     setShowCodeSettings(true);
                   }}
-                  className="h-7 w-7 p-0"
+                  className="h-7 w-7 p-0 text-white hover:bg-[#1c2a41]/50"
                 >
-                  <Settings className="h-4 w-4 text-purple-800" />
+                  <Settings className="h-4 w-4" />
                 </Button>
               </CardTitle>
-              <CardDescription className="text-xs text-purple-700">
+              <CardDescription className="text-xs text-networx-light/70">
                 Share this code to connect with someone
               </CardDescription>
             </CardHeader>
             <CardContent className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white rounded-lg border border-purple-200 flex-grow text-center">
-                  <span className="text-2xl font-bold tracking-widest text-purple-700">
+                <div className="p-2 bg-[#0B1120] rounded-lg border border-[#232e48] flex-grow text-center">
+                  <span className="text-2xl font-bold tracking-widest text-networx-light">
                     {currentCode?.code || '------'}
                   </span>
                 </div>
@@ -544,7 +602,7 @@ const Home = () => {
               </div>
               
               {currentCode && (
-                <div className="mt-2 text-xs text-center flex items-center justify-between text-purple-800">
+                <div className="mt-2 text-xs text-center flex items-center justify-between text-networx-light/70">
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     <span>{formatTimeLeft()}</span>
@@ -561,7 +619,7 @@ const Home = () => {
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value)}
                 placeholder="Enter someone's code"
-                className="border-purple-200 focus:border-purple-400"
+                className="border-[#232e48] bg-[#121A2F] text-white placeholder:text-gray-500"
                 maxLength={6}
               />
             </div>
@@ -576,31 +634,67 @@ const Home = () => {
           </div>
         </div>
 
+        {/* Chat Section Toggle */}
+        <div className="px-4 pt-4 bg-[#0F1628]">
+          <div className="chat-section-toggle">
+            <button 
+              className={`chat-section-button ${activeSection === ChatSection.PERSONAL ? 'chat-section-button-active' : 'chat-section-button-inactive'}`}
+              onClick={() => setActiveSection(ChatSection.PERSONAL)}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <User size={16} />
+                <span>Personal</span>
+              </div>
+            </button>
+            <button 
+              className={`chat-section-button ${activeSection === ChatSection.INDUSTRY ? 'chat-section-button-active' : 'chat-section-button-inactive'}`}
+              onClick={() => setActiveSection(ChatSection.INDUSTRY)}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Building size={16} />
+                <span>Industry</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Connections */}
-        <div className="flex-1 overflow-y-auto border-t border-purple-50">
-          <div className="p-4 border-b border-purple-50">
-            <h2 className="font-medium text-sm text-purple-800">Recent Chats</h2>
+        <div className="flex-1 overflow-y-auto border-t border-[#232e48]">
+          <div className="p-4 border-b border-[#232e48]">
+            <h2 className="font-medium text-sm text-networx-light">
+              {activeSection === ChatSection.PERSONAL ? 'Personal Chats' : 'Industry Connections'}
+            </h2>
           </div>
           
-          {connections.length === 0 ? (
+          {filteredConnections.length === 0 ? (
             <div className="p-6 text-center">
-              <User className="mx-auto h-12 w-12 text-purple-300" />
-              <h3 className="mt-2 text-sm font-semibold text-gray-900">No connections</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Share your code with someone to start chatting.
+              {activeSection === ChatSection.PERSONAL ? (
+                <User className="mx-auto h-12 w-12 text-[#2A3A57]" />
+              ) : (
+                <Building className="mx-auto h-12 w-12 text-[#2A3A57]" />
+              )}
+              <h3 className="mt-2 text-sm font-semibold text-networx-light">
+                {activeSection === ChatSection.PERSONAL 
+                  ? 'No personal connections' 
+                  : 'No industry connections'}
+              </h3>
+              <p className="mt-1 text-sm text-networx-light/70">
+                {activeSection === ChatSection.PERSONAL
+                  ? 'Share your code with someone to start chatting.'
+                  : 'Connect with industry professionals to see offers.'}
               </p>
             </div>
           ) : (
-            connections.map(connection => (
+            filteredConnections.map(connection => (
               <div 
                 key={connection.id}
-                className={`flex items-center justify-between p-4 cursor-pointer hover:bg-purple-50 border-b border-purple-50 ${
-                  activeConnection?.id === connection.id ? 'bg-purple-100' : ''
+                className={`connection-item ${
+                  activeConnection?.id === connection.id ? 'connection-item-active' : ''
                 }`}
                 onClick={() => handleConnectionClick(connection)}
               >
                 <div className="flex items-center flex-1">
-                  <Avatar className="h-12 w-12 border border-purple-100">
+                  <Avatar className="h-12 w-12 border border-[#232e48]">
                     <AvatarImage src={connection.profileImage} />
                     <AvatarFallback className="bg-gradient-to-r from-networx-primary to-networx-secondary text-white">
                       {getInitials(connection.name)}
@@ -608,22 +702,25 @@ const Home = () => {
                   </Avatar>
                   <div className="ml-3 overflow-hidden">
                     <div className="flex items-center">
-                      <p className="font-medium text-purple-900">{connection.name}</p>
+                      <p className="font-medium text-networx-light">{connection.name}</p>
+                      <span className="ml-2 text-xs text-networx-light/50">
+                        {connection.identityCode}
+                      </span>
                       {connection.muted && (
-                        <BellOff size={14} className="ml-1 text-gray-400" />
+                        <BellOff size={14} className="ml-1 text-gray-500" />
                       )}
                       {connection.callsMuted && (
-                        <VolumeX size={14} className="ml-1 text-gray-400" />
+                        <VolumeX size={14} className="ml-1 text-gray-500" />
                       )}
                     </div>
-                    <p className={`text-sm ${connection.muted ? 'text-gray-400' : 'text-purple-600'} truncate`}>
+                    <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
                       {connection.lastMessage?.content}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
                   {connection.lastMessage && (
-                    <span className="text-xs text-purple-500">
+                    <span className="text-xs text-networx-light/50">
                       {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
@@ -638,19 +735,19 @@ const Home = () => {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-[#232e48]" />
                     <DropdownMenuItem 
                       onClick={(e) => {
                         e.stopPropagation();
                         muteConnection(connection.id);
                       }} 
-                      className="flex items-center"
+                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                     >
                       <BellOff className="mr-2 h-4 w-4" />
                       {connection.muted ? 'Unmute messages' : 'Mute messages'}
@@ -660,7 +757,7 @@ const Home = () => {
                         e.stopPropagation();
                         muteConnectionCalls(connection.id);
                       }} 
-                      className="flex items-center"
+                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                     >
                       {connection.callsMuted ? (
                         <>
@@ -674,13 +771,13 @@ const Home = () => {
                         </>
                       )}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-[#232e48]" />
                     <DropdownMenuItem 
                       onClick={(e) => {
                         e.stopPropagation();
                         removeConnection(connection.id);
                       }} 
-                      className="text-red-600"
+                      className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
                     >
                       Remove Connection
                     </DropdownMenuItem>
@@ -697,11 +794,11 @@ const Home = () => {
         {activeConnection ? (
           <ChatView connection={activeConnection} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full bg-purple-50">
+          <div className="flex flex-col items-center justify-center h-full bg-networx-dark">
             <div className="text-center">
-              <MessageCircle className="mx-auto h-16 w-16 text-purple-300 mb-4" />
-              <h3 className="mt-2 text-xl font-medium text-purple-800">Welcome to NetworX</h3>
-              <p className="mt-2 text-purple-600 max-w-md">
+              <MessageCircle className="mx-auto h-16 w-16 text-[#2A3A57] mb-4" />
+              <h3 className="mt-2 text-xl font-medium text-networx-light">Welcome to NetworX</h3>
+              <p className="mt-2 text-networx-light/70 max-w-md">
                 Choose a conversation from the sidebar or share your connection code to start a new conversation.
               </p>
               <Button 
@@ -717,10 +814,10 @@ const Home = () => {
 
       {/* Code Settings Dialog */}
       <Dialog open={showCodeSettings} onOpenChange={setShowCodeSettings}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-[#121A2F] border-[#232e48] text-networx-light">
           <DialogHeader>
             <DialogTitle>Connection Code Settings</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-networx-light/70">
               Customize how your connection codes work
             </DialogDescription>
           </DialogHeader>
@@ -732,7 +829,7 @@ const Home = () => {
                   <label className="text-sm font-medium">
                     Code Expiration Time
                   </label>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-networx-light/70">
                     {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
                   </span>
                 </div>
@@ -762,7 +859,7 @@ const Home = () => {
                     min={1}
                     max={60}
                     step={1}
-                    className="bg-purple-100"
+                    className="bg-[#1C2A41]"
                     onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
                   />
                 )}
@@ -773,7 +870,7 @@ const Home = () => {
                   <label className="text-sm font-medium">
                     Maximum Uses Per Code
                   </label>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-networx-light/70">
                     {tempSettings.maxUses} uses
                   </span>
                 </div>
@@ -782,21 +879,22 @@ const Home = () => {
                   min={1}
                   max={10}
                   step={1}
-                  className="bg-purple-100"
+                  className="bg-[#1C2A41]"
                   onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
                 />
               </div>
             </div>
             
             <div className="pt-2">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-networx-light/70">
                 These settings will apply to all new codes you generate. 
               </p>
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCodeSettings(false)}>
+            <Button variant="outline" onClick={() => setShowCodeSettings(false)}
+              className="border-[#232e48] text-networx-light hover:bg-[#1C2A41] hover:text-networx-light">
               Cancel
             </Button>
             <Button onClick={handleSaveCodeSettings} className="bg-networx-primary hover:bg-networx-secondary text-white">
