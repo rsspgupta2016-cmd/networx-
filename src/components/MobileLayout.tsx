@@ -104,7 +104,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
         <nav className="bg-white border-t border-purple-200 p-2 flex justify-around">
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-purple-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-networx-primary' : 'text-gray-500'}`}
             onClick={() => navigate('/home')}
           >
             <MessageCircle size={24} />
@@ -113,7 +113,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${isDiscoverySection ? 'text-purple-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${isDiscoverySection ? 'text-networx-primary' : 'text-gray-500'}`}
             onClick={() => navigate('/discovery')}
           >
             <Sparkles size={24} />
@@ -122,7 +122,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-purple-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-networx-primary' : 'text-gray-500'}`}
             onClick={() => navigate('/settings')}
           >
             <Settings size={24} />
