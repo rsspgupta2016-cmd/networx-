@@ -106,7 +106,7 @@ const Discovery = () => {
         <Card className="networx-card">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-lg text-networx-light">Discovery</CardTitle>
+              <CardTitle className="text-lg text-networx-light">Industry/Perks</CardTitle>
               <Switch 
                 checked={offersEnabled} 
                 onCheckedChange={setOffersEnabled} 
@@ -156,15 +156,15 @@ const Discovery = () => {
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-networx-light">{offer.sender}</h3>
+                      <h3 className="font-medium text-black">{offer.sender}</h3>
                       <Badge variant="outline" className="inline-flex items-center bg-[#1C2A41] text-networx-light border-[#232e48] text-xs mt-0.5">
                         <Tag size={12} className="mr-1" /> {offer.category}
                       </Badge>
                     </div>
                     <span className="text-xs text-networx-light/50">{formatTime(offer.timestamp)}</span>
                   </div>
-                  <h4 className="font-medium mt-2 text-networx-light">{offer.title}</h4>
-                  <p className="text-sm text-networx-light/80 mt-1">{offer.description}</p>
+                  <h4 className="font-medium mt-2 text-black">{offer.title}</h4>
+                  <p className="text-sm text-black mt-1">{offer.description}</p>
                 </div>
               </div>
             </div>
