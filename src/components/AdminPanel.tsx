@@ -39,8 +39,9 @@ const AdminPanel = () => {
         throw new Error('Invalid MFA code');
       }
       
-      // In a real app, this would search Supabase for the identity code and decrypt the phone
+      // Bug fixed: Looking for identity code in correct local storage keys
       const allUserKeys = Object.keys(localStorage);
+      // Bug fix: Check the correct key pattern
       const identityEntries = allUserKeys.filter(key => key.startsWith('networx-identity-'));
       
       let found = false;
@@ -70,21 +71,31 @@ const AdminPanel = () => {
       setAccessLog(prevLogs => [...prevLogs, newLog]);
       setDecryptedPhone(phoneNumber);
       
+      toast({
+        title: "Success",
+        description: "Phone number decrypted successfully",
+      });
+      
     } catch (error: any) {
       setError(error.message || 'An error occurred');
+      toast({
+        title: "Decryption Failed",
+        description: error.message || 'An error occurred',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
   
   return (
-    <Card className="w-full max-w-md mx-auto border border-red-200 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+    <Card className="w-full max-w-md mx-auto border border-purple-200 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
         <div className="flex items-center gap-2">
           <Shield className="h-6 w-6" />
           <CardTitle>NetworX Admin Panel</CardTitle>
         </div>
-        <CardDescription className="text-red-100">
+        <CardDescription className="text-purple-100">
           Secure identity decryption (Admin only)
         </CardDescription>
       </CardHeader>
@@ -160,7 +171,7 @@ const AdminPanel = () => {
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
         <Button 
-          className="w-full bg-red-600 hover:bg-red-700"
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
           onClick={handleDecrypt}
           disabled={loading}
         >

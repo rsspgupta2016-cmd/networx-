@@ -64,11 +64,11 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				networx: {
-					primary: '#3B82F6',
-					secondary: '#1E40AF',
-					accent: '#DBEAFE',
-					light: '#F9FAFB',
-					dark: '#1F2937',
+					primary: '#9B87F5', // Changed from blue to purple
+					secondary: '#7E69AB', // Changed from blue to purple
+					accent: '#D6BCFA',    // Changed from blue to purple
+					light: '#F9F5FF',     // Changed from gray to light purple
+					dark: '#1A1F2C',      // Changed to dark purple
 				}
 			},
 			borderRadius: {

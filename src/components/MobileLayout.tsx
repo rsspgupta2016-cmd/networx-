@@ -36,15 +36,15 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-green-50">
+    <div className="flex flex-col h-screen bg-purple-50">
       {/* Don't show header on login/signup */}
       {!isAuthPage && (
-        <header className="bg-green-500 text-white p-4 flex items-center justify-between">
+        <header className="networx-gradient text-white p-4 flex items-center justify-between">
           <div className="flex items-center">
             {location.pathname !== '/home' && location.pathname !== '/discovery' && (
               <Button 
                 variant="ghost" 
-                className="mr-2 text-white hover:bg-green-600 p-1" 
+                className="mr-2 text-white hover:bg-purple-600/30 p-1" 
                 onClick={handleBack}
               >
                 <ArrowLeft size={24} />
@@ -57,13 +57,13 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
             {user && (
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-green-600">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-purple-600/30">
                     <User size={24} />
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="bg-white">
                   <div className="flex flex-col h-full">
-                    <div className="p-4 bg-green-500 text-white mb-4 -mt-6 -mx-6">
+                    <div className="p-4 networx-gradient text-white mb-4 -mt-6 -mx-6">
                       <h2 className="text-xl font-bold">{user.displayName}</h2>
                       <p className="text-sm opacity-80">ID: {user.identityCode || 'NX-XXXXX'}</p>
                     </div>
@@ -101,10 +101,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       
       {/* Mobile navigation bar - only show when authenticated and not on auth pages */}
       {user && !isAuthPage && (
-        <nav className="bg-white border-t border-green-200 p-2 flex justify-around">
+        <nav className="bg-white border-t border-purple-200 p-2 flex justify-around">
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-green-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/home' ? 'text-purple-600' : 'text-gray-500'}`}
             onClick={() => navigate('/home')}
           >
             <MessageCircle size={24} />
@@ -113,7 +113,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${isDiscoverySection ? 'text-green-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${isDiscoverySection ? 'text-purple-600' : 'text-gray-500'}`}
             onClick={() => navigate('/discovery')}
           >
             <Sparkles size={24} />
@@ -122,7 +122,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-green-600' : 'text-gray-500'}`}
+            className={`flex flex-col items-center ${location.pathname === '/settings' ? 'text-purple-600' : 'text-gray-500'}`}
             onClick={() => navigate('/settings')}
           >
             <Settings size={24} />
