@@ -91,42 +91,42 @@ const ChatView = ({ connection }: ChatViewProps) => {
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#0B1120] to-[#1C2A41] text-white shadow-md border-b border-[#232e48]">
         {isMobile && (
           <Button 
             variant="ghost" 
             size="icon" 
-            className="text-white hover:bg-green-600 mr-2"
+            className="text-white hover:bg-[#283a56] mr-2"
             onClick={handleBackToChats}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
         <div className="flex items-center">
-          <Avatar className="h-10 w-10 border-2 border-white">
+          <Avatar className="h-10 w-10 border-2 border-networx-primary">
             <AvatarImage src={connection.profileImage} />
-            <AvatarFallback className="bg-green-700 text-white">{getInitials(connection.name)}</AvatarFallback>
+            <AvatarFallback className="bg-[#1C2A41] text-networx-primary">{getInitials(connection.name)}</AvatarFallback>
           </Avatar>
           <div className="ml-3">
             <div className="flex items-center">
               <h2 className="font-semibold">{connection.name}</h2>
               <div className="flex ml-2">
                 {connection.muted && (
-                  <div className="bg-green-700 rounded-full p-0.5 mr-1" title="Messages muted">
+                  <div className="bg-networx-primary rounded-full p-0.5 mr-1" title="Messages muted">
                     <BellOff className="h-3 w-3" />
                   </div>
                 )}
                 {connection.callsMuted && (
-                  <div className="bg-green-700 rounded-full p-0.5" title="Calls muted">
+                  <div className="bg-networx-primary rounded-full p-0.5" title="Calls muted">
                     <VolumeX className="h-3 w-3" />
                   </div>
                 )}
               </div>
             </div>
-            <p className="text-xs text-green-100">Online</p>
+            <p className="text-xs text-networx-light/70">Online</p>
           </div>
         </div>
-        <div className="text-xs bg-green-700 px-2 py-1 rounded-full">
+        <div className="text-xs bg-[#283a56] px-2 py-1 rounded-full">
           ID: {user?.identityCode || 'NX-XXXXX'}
         </div>
       </div>
@@ -203,13 +203,13 @@ const ChatView = ({ connection }: ChatViewProps) => {
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
           placeholder="Type a message..."
-          className="flex-grow border-green-200 focus:border-green-400"
+          className="flex-grow border-[#232e48] focus:border-networx-primary"
         />
         <Button 
           type="submit" 
           size="icon" 
           disabled={!messageInput.trim()}
-          className={`rounded-full ${messageInput.trim() ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300'}`}
+          className={`rounded-full ${messageInput.trim() ? 'bg-networx-primary hover:bg-networx-secondary' : 'bg-gray-300'}`}
         >
           <Send className="h-4 w-4" />
         </Button>
