@@ -133,8 +133,7 @@ const ChatView = ({ connection }: ChatViewProps) => {
       
       {/* Messages Area */}
       <div 
-        className="flex-1 overflow-y-auto p-4 bg-[#e0f2ff] bg-opacity-50 bg-[url('/pattern-bg.svg')] space-y-4"
-        style={{ backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48ZyBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjZDdmNWRiIiBkPSJNMzYgMzBhNiA2IDAgMSAxLTEyIDAgNiA2IDAgMCAxIDEyIDB6Ii8+PHBhdGggZmlsbD0iI2VkZjhmNSIgZD0iTTAgMGgxMnYxMkgwem0yNCAwaDEydjEySDI0em00OCAwaDEydjEySDcyek0wIDI0aDEydjEySDB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6TTAgNDhoMTJ2MTJIMHB6bTI0IDBoMTJ2MTJIMjR6bTQ4IDBoMTJ2MTJINzJ6Ii8+PC9nPjwvc3ZnPg==')" }}
+        className="flex-1 overflow-y-auto p-4 bg-[#e8f4ff]"
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full opacity-60">
