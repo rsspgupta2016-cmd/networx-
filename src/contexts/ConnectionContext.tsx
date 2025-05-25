@@ -48,6 +48,7 @@ type ConnectionContextType = {
   currentCode: CodeStatus | null;
   updateCodeSettings: (settings: Partial<CodeSettings>) => void;
   defaultCodeSettings: CodeSettings;
+  validatePermanentCode: (code: string) => boolean;
 };
 
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
@@ -56,6 +57,9 @@ const DEFAULT_CODE_SETTINGS: CodeSettings = {
   permanentCode: null,
   usePermanentCode: false,
 };
+
+// Store of used codes to prevent collisions (in real app, this would be server-side)
+const USED_CODES = new Set<string>();
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
 
@@ -180,11 +184,47 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(intervalId);
   }, [currentCode, user]);
 
+  const validatePermanentCode = (code: string): boolean => {
+    // Check if code is 6 digits
+    if (!/^\d{6}$/.test(code)) {
+      toast({
+        title: "Invalid code format",
+        description: "Code must be exactly 6 digits",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check if code is already in use
+    if (USED_CODES.has(code)) {
+      toast({
+        title: "Code already in use",
+        description: "This code is already taken by another user. Please choose a different one.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check against existing user's current code
+    if (currentCode && currentCode.code === code) {
+      return true; // User is setting the same code they already have
+    }
+
+    return true;
+  };
+
   const updateCodeSettings = (settings: Partial<CodeSettings>) => {
     const newSettings = {
       ...defaultCodeSettings,
       ...settings
     };
+    
+    // Validate permanent code if being set
+    if (newSettings.usePermanentCode && newSettings.permanentCode) {
+      if (!validatePermanentCode(newSettings.permanentCode)) {
+        return; // Validation failed, don't update
+      }
+    }
     
     setDefaultCodeSettings(newSettings);
     if (user) {
@@ -193,6 +233,14 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     
     // If permanent code is enabled and we have a permanent code, generate it
     if (newSettings.usePermanentCode && newSettings.permanentCode) {
+      // Remove old code from used set if it exists
+      if (currentCode && currentCode.isPermanent) {
+        USED_CODES.delete(currentCode.code);
+      }
+      
+      // Add new code to used set
+      USED_CODES.add(newSettings.permanentCode);
+      
       const permanentCodeStatus: CodeStatus = {
         code: newSettings.permanentCode,
         createdAt: new Date().toISOString(),
@@ -227,9 +275,34 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     if (settings.usePermanentCode && settings.permanentCode) {
       code = settings.permanentCode;
       isPermanent = true;
+      
+      // Add to used codes set
+      USED_CODES.add(code);
     } else {
-      // Generate a random 6-digit code
-      code = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate a unique random 6-digit code
+      let attempts = 0;
+      do {
+        code = Math.floor(100000 + Math.random() * 900000).toString();
+        attempts++;
+        
+        // Prevent infinite loop
+        if (attempts > 100) {
+          toast({
+            title: "Code generation failed",
+            description: "Unable to generate a unique code. Please try again.",
+            variant: "destructive"
+          });
+          return currentCode?.code || '000000';
+        }
+      } while (USED_CODES.has(code));
+      
+      // Add to used codes set
+      USED_CODES.add(code);
+    }
+    
+    // Remove old code from used set if it exists
+    if (currentCode && !currentCode.isPermanent) {
+      USED_CODES.delete(currentCode.code);
     }
     
     // Create code status object
@@ -259,6 +332,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
           if (currentStoredCode) {
             const parsedCode = JSON.parse(currentStoredCode);
             if (parsedCode.code === code && !parsedCode.isPermanent) {
+              USED_CODES.delete(code); // Remove from used codes when expired
               localStorage.removeItem(`networx-connection-code-${user.id}`);
               setCurrentCode(null);
             }
@@ -287,9 +361,11 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       setCurrentCode(updatedCode);
       if (user) {
         if (updatedUsesLeft <= 0) {
+          USED_CODES.delete(code); // Remove from used codes when expired
           localStorage.removeItem(`networx-connection-code-${user.id}`);
           setCurrentCode(null);
         } else {
+          USED_CODES.add(code); // Add back to used codes if still valid
           localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(updatedCode));
         }
       }
@@ -383,6 +459,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     currentCode,
     updateCodeSettings,
     defaultCodeSettings,
+    validatePermanentCode,
   };
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;

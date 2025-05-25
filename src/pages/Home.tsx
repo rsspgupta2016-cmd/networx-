@@ -51,6 +51,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { toast } from '@/hooks/use-toast';
 
 // Extend Connection interface to include isIndustry property
 declare module '@/contexts/ConnectionContext' {
