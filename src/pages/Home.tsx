@@ -40,7 +40,8 @@ import {
   ArrowLeft,
   Users,
   Building,
-  Ticket
+  Ticket,
+  Edit
 } from 'lucide-react';
 import ChatView from '../components/ChatView';
 import { Slider } from '@/components/ui/slider';
@@ -83,7 +84,8 @@ const Home = () => {
     muteConnectionCalls,
     currentCode,
     defaultCodeSettings,
-    updateCodeSettings
+    updateCodeSettings,
+    updateConnectionName
   } = useConnection();
   const { getMessagesForConnection, markMessagesAsRead } = useChat();
   
@@ -95,6 +97,8 @@ const Home = () => {
   const [tempSettings, setTempSettings] = useState<CodeSettings>(defaultCodeSettings);
   const [showMobileSidebar, setShowMobileSidebar] = useState(true);
   const [activeSection, setActiveSection] = useState<ChatSection>(ChatSection.PERSONAL);
+  const [editingConnection, setEditingConnection] = useState<string | null>(null);
+  const [newConnectionName, setNewConnectionName] = useState('');
 
   // Get active connection ID from URL for mobile view
   const activeChatId = searchParams.get('chat');
@@ -165,6 +169,24 @@ const Home = () => {
   const handleSaveCodeSettings = () => {
     updateCodeSettings(tempSettings);
     setShowCodeSettings(false);
+  };
+
+  const handleEditConnectionName = (connectionId: string, currentName: string) => {
+    setEditingConnection(connectionId);
+    setNewConnectionName(currentName);
+  };
+
+  const handleSaveConnectionName = () => {
+    if (editingConnection && newConnectionName.trim()) {
+      updateConnectionName(editingConnection, newConnectionName.trim());
+      setEditingConnection(null);
+      setNewConnectionName('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingConnection(null);
+    setNewConnectionName('');
   };
 
   // Count unread messages for a connection
@@ -355,7 +377,7 @@ const Home = () => {
                 className={`connection-item ${
                   activeConnection?.id === connection.id ? 'connection-item-active' : ''
                 }`}
-                onClick={() => handleConnectionClick(connection)}
+                onClick={() => editingConnection !== connection.id ? handleConnectionClick(connection) : undefined}
               >
                 <div className="flex items-center flex-1">
                   <Avatar className="h-12 w-12 border border-[#232e48]">
@@ -366,87 +388,126 @@ const Home = () => {
                   </Avatar>
                   <div className="ml-3 overflow-hidden">
                     <div className="flex items-center">
-                      <p className="font-medium text-networx-light">{connection.name}</p>
-                      <span className="ml-2 text-xs text-networx-light/50">
-                        {connection.identityCode}
-                      </span>
-                      {connection.muted && (
-                        <BellOff size={14} className="ml-1 text-gray-500" />
-                      )}
-                      {connection.callsMuted && (
-                        <VolumeX size={14} className="ml-1 text-gray-500" />
-                      )}
-                    </div>
-                    <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
-                      {connection.lastMessage?.content}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  {connection.lastMessage && (
-                    <span className="text-xs text-networx-light/50">
-                      {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  )}
-                  {getUnreadCount(connection.id) > 0 && (
-                    <span className="bg-networx-primary text-white text-xs rounded-full px-2 py-0.5 mt-1 font-medium">
-                      {getUnreadCount(connection.id)}
-                    </span>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-[#232e48]" />
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        muteConnection(connection.id);
-                      }} 
-                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      <BellOff className="mr-2 h-4 w-4" />
-                      {connection.muted ? 'Unmute messages' : 'Mute messages'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        muteConnectionCalls(connection.id);
-                      }} 
-                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      {connection.callsMuted ? (
-                        <>
-                          <Volume className="mr-2 h-4 w-4" />
-                          Unmute calls
-                        </>
+                      {editingConnection === connection.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={newConnectionName}
+                            onChange={(e) => setNewConnectionName(e.target.value)}
+                            className="h-6 text-sm border-[#232e48] bg-[#121A2F] text-white"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveConnectionName();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            autoFocus
+                          />
+                          <Button size="sm" onClick={handleSaveConnectionName} className="h-6 px-2 bg-networx-primary hover:bg-networx-secondary">
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-6 px-2 text-networx-light">
+                            Cancel
+                          </Button>
+                        </div>
                       ) : (
                         <>
-                          <VolumeX className="mr-2 h-4 w-4" />
-                          Mute calls
+                          <p className="font-medium text-networx-light">{connection.name}</p>
+                          <span className="ml-2 text-xs text-networx-light/50">
+                            {connection.identityCode}
+                          </span>
+                          {connection.muted && (
+                            <BellOff size={14} className="ml-1 text-gray-500" />
+                          )}
+                          {connection.callsMuted && (
+                            <VolumeX size={14} className="ml-1 text-gray-500" />
+                          )}
                         </>
                       )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#232e48]" />
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeConnection(connection.id);
-                      }} 
-                      className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      Remove Connection
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </div>
+                    {editingConnection !== connection.id && (
+                      <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
+                        {connection.lastMessage?.content}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {editingConnection !== connection.id && (
+                  <>
+                    <div className="flex flex-col items-end">
+                      {connection.lastMessage && (
+                        <span className="text-xs text-networx-light/50">
+                          {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      )}
+                      {getUnreadCount(connection.id) > 0 && (
+                        <span className="bg-networx-primary text-white text-xs rounded-full px-2 py-0.5 mt-1 font-medium">
+                          {getUnreadCount(connection.id)}
+                        </span>
+                      )}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-[#232e48]" />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditConnectionName(connection.id, connection.name);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit name
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            muteConnection(connection.id);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          <BellOff className="mr-2 h-4 w-4" />
+                          {connection.muted ? 'Unmute messages' : 'Mute messages'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            muteConnectionCalls(connection.id);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          {connection.callsMuted ? (
+                            <>
+                              <Volume className="mr-2 h-4 w-4" />
+                              Unmute calls
+                            </>
+                          ) : (
+                            <>
+                              <VolumeX className="mr-2 h-4 w-4" />
+                              Mute calls
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-[#232e48]" />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeConnection(connection.id);
+                          }} 
+                          className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          Remove Connection
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
               </div>
             ))
           )}
@@ -715,7 +776,7 @@ const Home = () => {
                 className={`connection-item ${
                   activeConnection?.id === connection.id ? 'connection-item-active' : ''
                 }`}
-                onClick={() => handleConnectionClick(connection)}
+                onClick={() => editingConnection !== connection.id ? handleConnectionClick(connection) : undefined}
               >
                 <div className="flex items-center flex-1">
                   <Avatar className="h-12 w-12 border border-[#232e48]">
@@ -726,87 +787,126 @@ const Home = () => {
                   </Avatar>
                   <div className="ml-3 overflow-hidden">
                     <div className="flex items-center">
-                      <p className="font-medium text-networx-light">{connection.name}</p>
-                      <span className="ml-2 text-xs text-networx-light/50">
-                        {connection.identityCode}
-                      </span>
-                      {connection.muted && (
-                        <BellOff size={14} className="ml-1 text-gray-500" />
-                      )}
-                      {connection.callsMuted && (
-                        <VolumeX size={14} className="ml-1 text-gray-500" />
-                      )}
-                    </div>
-                    <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
-                      {connection.lastMessage?.content}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  {connection.lastMessage && (
-                    <span className="text-xs text-networx-light/50">
-                      {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  )}
-                  {getUnreadCount(connection.id) > 0 && (
-                    <span className="bg-networx-primary text-white text-xs rounded-full px-2 py-0.5 mt-1 font-medium">
-                      {getUnreadCount(connection.id)}
-                    </span>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-[#232e48]" />
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        muteConnection(connection.id);
-                      }} 
-                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      <BellOff className="mr-2 h-4 w-4" />
-                      {connection.muted ? 'Unmute messages' : 'Mute messages'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        muteConnectionCalls(connection.id);
-                      }} 
-                      className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      {connection.callsMuted ? (
-                        <>
-                          <Volume className="mr-2 h-4 w-4" />
-                          Unmute calls
-                        </>
+                      {editingConnection === connection.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={newConnectionName}
+                            onChange={(e) => setNewConnectionName(e.target.value)}
+                            className="h-6 text-sm border-[#232e48] bg-[#121A2F] text-white"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveConnectionName();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            autoFocus
+                          />
+                          <Button size="sm" onClick={handleSaveConnectionName} className="h-6 px-2 bg-networx-primary hover:bg-networx-secondary">
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-6 px-2 text-networx-light">
+                            Cancel
+                          </Button>
+                        </div>
                       ) : (
                         <>
-                          <VolumeX className="mr-2 h-4 w-4" />
-                          Mute calls
+                          <p className="font-medium text-networx-light">{connection.name}</p>
+                          <span className="ml-2 text-xs text-networx-light/50">
+                            {connection.identityCode}
+                          </span>
+                          {connection.muted && (
+                            <BellOff size={14} className="ml-1 text-gray-500" />
+                          )}
+                          {connection.callsMuted && (
+                            <VolumeX size={14} className="ml-1 text-gray-500" />
+                          )}
                         </>
                       )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#232e48]" />
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeConnection(connection.id);
-                      }} 
-                      className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
-                    >
-                      Remove Connection
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </div>
+                    {editingConnection !== connection.id && (
+                      <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
+                        {connection.lastMessage?.content}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {editingConnection !== connection.id && (
+                  <>
+                    <div className="flex flex-col items-end">
+                      {connection.lastMessage && (
+                        <span className="text-xs text-networx-light/50">
+                          {new Date(connection.lastMessage.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      )}
+                      {getUnreadCount(connection.id) > 0 && (
+                        <span className="bg-networx-primary text-white text-xs rounded-full px-2 py-0.5 mt-1 font-medium">
+                          {getUnreadCount(connection.id)}
+                        </span>
+                      )}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="text-networx-light">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#121A2F] border border-[#232e48] text-networx-light">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-[#232e48]" />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditConnectionName(connection.id, connection.name);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit name
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            muteConnection(connection.id);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          <BellOff className="mr-2 h-4 w-4" />
+                          {connection.muted ? 'Unmute messages' : 'Mute messages'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            muteConnectionCalls(connection.id);
+                          }} 
+                          className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          {connection.callsMuted ? (
+                            <>
+                              <Volume className="mr-2 h-4 w-4" />
+                              Unmute calls
+                            </>
+                          ) : (
+                            <>
+                              <VolumeX className="mr-2 h-4 w-4" />
+                              Mute calls
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-[#232e48]" />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeConnection(connection.id);
+                          }} 
+                          className="text-networx-primary hover:bg-[#1C2A41] cursor-pointer"
+                        >
+                          Remove Connection
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
               </div>
             ))
           )}

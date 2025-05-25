@@ -49,6 +49,7 @@ type ConnectionContextType = {
   updateCodeSettings: (settings: Partial<CodeSettings>) => void;
   defaultCodeSettings: CodeSettings;
   validatePermanentCode: (code: string) => boolean;
+  updateConnectionName: (connectionId: string, newName: string) => void;
 };
 
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
@@ -446,6 +447,26 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const updateConnectionName = (connectionId: string, newName: string) => {
+    setConnections(prev => 
+      prev.map(conn => 
+        conn.id === connectionId 
+          ? { ...conn, name: newName } 
+          : conn
+      )
+    );
+    
+    // Update active connection if it's the one being renamed
+    if (activeConnection?.id === connectionId) {
+      setActiveConnection(prev => prev ? { ...prev, name: newName } : null);
+    }
+    
+    toast({
+      title: "Connection name updated",
+      description: `Contact renamed to ${newName}`,
+    });
+  };
+
   const value = {
     connections,
     activeConnection,
@@ -460,6 +481,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     updateCodeSettings,
     defaultCodeSettings,
     validatePermanentCode,
+    updateConnectionName,
   };
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;
