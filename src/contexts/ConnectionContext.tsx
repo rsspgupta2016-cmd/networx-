@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -16,6 +15,8 @@ export type Connection = {
   connectionCode?: string;
   muted: boolean;
   callsMuted: boolean;
+  isIndustry?: boolean;
+  identityCode?: string;
 };
 
 export type CodeSettings = {
@@ -88,6 +89,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
             },
             muted: false,
             callsMuted: false,
+            identityCode: 'NX-12345',
           },
           {
             id: '2',
@@ -100,6 +102,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
             },
             muted: false,
             callsMuted: false,
+            identityCode: 'NX-67890',
           },
         ];
         setConnections(demoConnections);
@@ -127,16 +130,11 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
             setCurrentCode(null);
           }
         } else {
-          // For codes with no expiration, check if uses are left
-          if (parsedCode.usesLeft === null || parsedCode.usesLeft > 0) {
-            setCurrentCode({
-              ...parsedCode,
-              isExpired: false
-            });
-          } else {
-            localStorage.removeItem(`networx-connection-code-${user.id}`);
-            setCurrentCode(null);
-          }
+          // For codes with no expiration, they should stay active indefinitely
+          setCurrentCode({
+            ...parsedCode,
+            isExpired: false
+          });
         }
       }
       
@@ -204,12 +202,15 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       ...(customSettings || {})
     };
     
-    // Create code status object
+    // Create code status object - for expiration-based codes, maxUses should be null (unlimited during time period)
     const codeStatus: CodeStatus = {
       code,
       createdAt: new Date().toISOString(),
-      settings,
-      usesLeft: settings.maxUses, // Can be null for unlimited
+      settings: {
+        ...settings,
+        maxUses: settings.expirationMinutes !== null ? null : settings.maxUses // Unlimited uses during expiration time
+      },
+      usesLeft: settings.expirationMinutes !== null ? null : settings.maxUses, // Unlimited during time period
       isExpired: false
     };
     
@@ -243,8 +244,9 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     // For demo, we'll simulate a successful connection
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Update the uses left if tracking uses
-    if (currentCode && currentCode.code === code && currentCode.usesLeft !== null) {
+    // For time-based codes, don't update uses since they're unlimited during the time period
+    // Only update uses for non-expiring codes with use limits
+    if (currentCode && currentCode.code === code && currentCode.settings.expirationMinutes === null && currentCode.usesLeft !== null) {
       const updatedUsesLeft = currentCode.usesLeft - 1;
       const updatedCode = {
         ...currentCode,
@@ -274,6 +276,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       },
       muted: false,
       callsMuted: false,
+      identityCode: `NX-${Math.floor(10000 + Math.random() * 90000)}`,
     };
     
     addConnection(newConnection);

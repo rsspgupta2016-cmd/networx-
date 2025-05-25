@@ -263,7 +263,12 @@ const Home = () => {
                     <Clock className="h-3 w-3" />
                     <span>{formatTimeLeft()}</span>
                   </div>
-                  <span>Uses: {currentCode.usesLeft}/{currentCode.settings.maxUses}</span>
+                  {currentCode.settings.expirationMinutes === null && (
+                    <span>Uses: {currentCode.usesLeft}/{currentCode.settings.maxUses}</span>
+                  )}
+                  {currentCode.settings.expirationMinutes !== null && (
+                    <span>Unlimited uses</span>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -474,15 +479,13 @@ const Home = () => {
                       checked={tempSettings.expirationMinutes !== null}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          // If checked, set default value of 5 minutes
                           setTempSettings({...tempSettings, expirationMinutes: 5});
                         } else {
-                          // If unchecked, set to null (no expiration)
                           setTempSettings({...tempSettings, expirationMinutes: null});
                         }
                       }}
                     />
-                    <label htmlFor="useExpiration" className="text-sm">Enable expiration time</label>
+                    <label htmlFor="useExpiration" className="text-sm">Enable time-based expiration (unlimited uses during time period)</label>
                   </div>
                   
                   {tempSettings.expirationMinutes !== null && (
@@ -497,29 +500,34 @@ const Home = () => {
                   )}
                 </div>
                 
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-sm font-medium">
-                      Maximum Uses Per Code
-                    </label>
-                    <span className="text-sm text-networx-light/70">
-                      {tempSettings.maxUses} uses
-                    </span>
+                {tempSettings.expirationMinutes === null && (
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm font-medium">
+                        Maximum Uses Per Code
+                      </label>
+                      <span className="text-sm text-networx-light/70">
+                        {tempSettings.maxUses} uses
+                      </span>
+                    </div>
+                    <Slider
+                      value={[tempSettings.maxUses || 1]}
+                      min={1}
+                      max={10}
+                      step={1}
+                      className="bg-[#1C2A41]"
+                      onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
+                    />
                   </div>
-                  <Slider
-                    value={[tempSettings.maxUses]}
-                    min={1}
-                    max={10}
-                    step={1}
-                    className="bg-[#1C2A41]"
-                    onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
-                  />
-                </div>
+                )}
               </div>
               
               <div className="pt-2">
                 <p className="text-xs text-networx-light/70">
-                  These settings will apply to all new codes you generate. 
+                  {tempSettings.expirationMinutes !== null 
+                    ? "Time-based codes allow unlimited people to connect during the specified time period."
+                    : "Use-based codes allow a specific number of connections before expiring."
+                  }
                 </p>
               </div>
             </div>
@@ -615,7 +623,12 @@ const Home = () => {
                     <Clock className="h-3 w-3" />
                     <span>{formatTimeLeft()}</span>
                   </div>
-                  <span>Uses: {currentCode.usesLeft}/{currentCode.settings.maxUses}</span>
+                  {currentCode.settings.expirationMinutes === null && (
+                    <span>Uses: {currentCode.usesLeft}/{currentCode.settings.maxUses}</span>
+                  )}
+                  {currentCode.settings.expirationMinutes !== null && (
+                    <span>Unlimited uses</span>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -850,15 +863,13 @@ const Home = () => {
                     checked={tempSettings.expirationMinutes !== null}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        // If checked, set default value of 5 minutes
                         setTempSettings({...tempSettings, expirationMinutes: 5});
                       } else {
-                        // If unchecked, set to null (no expiration)
                         setTempSettings({...tempSettings, expirationMinutes: null});
                       }
                     }}
                   />
-                  <label htmlFor="useExpiration" className="text-sm">Enable expiration time</label>
+                  <label htmlFor="useExpiration" className="text-sm">Enable time-based expiration (unlimited uses during time period)</label>
                 </div>
                 
                 {tempSettings.expirationMinutes !== null && (
@@ -873,29 +884,34 @@ const Home = () => {
                 )}
               </div>
               
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm font-medium">
-                    Maximum Uses Per Code
-                  </label>
-                  <span className="text-sm text-networx-light/70">
-                    {tempSettings.maxUses} uses
-                  </span>
+              {tempSettings.expirationMinutes === null && (
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-medium">
+                      Maximum Uses Per Code
+                    </label>
+                    <span className="text-sm text-networx-light/70">
+                      {tempSettings.maxUses} uses
+                    </span>
+                  </div>
+                  <Slider
+                    value={[tempSettings.maxUses || 1]}
+                    min={1}
+                    max={10}
+                    step={1}
+                    className="bg-[#1C2A41]"
+                    onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
+                  />
                 </div>
-                <Slider
-                  value={[tempSettings.maxUses]}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="bg-[#1C2A41]"
-                  onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
-                />
-              </div>
+              )}
             </div>
             
             <div className="pt-2">
               <p className="text-xs text-networx-light/70">
-                These settings will apply to all new codes you generate. 
+                {tempSettings.expirationMinutes !== null 
+                  ? "Time-based codes allow unlimited people to connect during the specified time period."
+                  : "Use-based codes allow a specific number of connections before expiring."
+                }
               </p>
             </div>
           </div>
