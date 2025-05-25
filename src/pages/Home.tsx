@@ -182,7 +182,9 @@ const Home = () => {
   };
 
   const formatTimeLeft = () => {
-    if (!currentCode || currentCode.settings.expirationMinutes === null) return 'No expiration';
+    if (!currentCode) return 'No code';
+    if (currentCode.isPermanent) return 'Permanent';
+    if (currentCode.settings.expirationMinutes === null) return 'No expiration';
     
     const expirationTime = new Date(currentCode.createdAt).getTime() + 
       (currentCode.settings.expirationMinutes * 60 * 1000);
@@ -846,71 +848,108 @@ const Home = () => {
           <div className="space-y-6 py-4">
             <div className="space-y-4">
               <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-sm font-medium">
-                    Code Expiration Time
-                  </label>
-                  <span className="text-sm text-networx-light/70">
-                    {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
-                  </span>
-                </div>
-                
-                <div className="flex items-center mb-2">
+                <div className="flex items-center mb-4">
                   <input
                     type="checkbox"
-                    id="useExpiration"
+                    id="usePermanentCode"
                     className="mr-2"
-                    checked={tempSettings.expirationMinutes !== null}
+                    checked={tempSettings.usePermanentCode}
                     onChange={(e) => {
-                      if (e.target.checked) {
-                        setTempSettings({...tempSettings, expirationMinutes: 5});
-                      } else {
-                        setTempSettings({...tempSettings, expirationMinutes: null});
-                      }
+                      setTempSettings({...tempSettings, usePermanentCode: e.target.checked});
                     }}
                   />
-                  <label htmlFor="useExpiration" className="text-sm">Enable time-based expiration (unlimited uses during time period)</label>
+                  <label htmlFor="usePermanentCode" className="text-sm font-medium">Use Permanent Code</label>
                 </div>
                 
-                {tempSettings.expirationMinutes !== null && (
-                  <Slider
-                    value={[tempSettings.expirationMinutes]}
-                    min={1}
-                    max={60}
-                    step={1}
-                    className="bg-[#1C2A41]"
-                    onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
-                  />
+                {tempSettings.usePermanentCode && (
+                  <div className="mb-4">
+                    <label className="text-sm font-medium mb-2 block">Your Permanent Code</label>
+                    <Input
+                      value={tempSettings.permanentCode || ''}
+                      onChange={(e) => setTempSettings({...tempSettings, permanentCode: e.target.value})}
+                      placeholder="Enter your permanent code (6 digits)"
+                      className="border-[#232e48] bg-[#121A2F] text-white placeholder:text-gray-500"
+                      maxLength={6}
+                    />
+                    <p className="text-xs text-networx-light/70 mt-1">
+                      This code will never expire and allows unlimited connections
+                    </p>
+                  </div>
                 )}
               </div>
               
-              {tempSettings.expirationMinutes === null && (
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-sm font-medium">
-                      Maximum Uses Per Code
-                    </label>
-                    <span className="text-sm text-networx-light/70">
-                      {tempSettings.maxUses} uses
-                    </span>
+              {!tempSettings.usePermanentCode && (
+                <>
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-sm font-medium">
+                        Code Expiration Time
+                      </label>
+                      <span className="text-sm text-networx-light/70">
+                        {tempSettings.expirationMinutes === null ? 'No expiration' : `${tempSettings.expirationMinutes} minutes`}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id="useExpiration"
+                        className="mr-2"
+                        checked={tempSettings.expirationMinutes !== null}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setTempSettings({...tempSettings, expirationMinutes: 5});
+                          } else {
+                            setTempSettings({...tempSettings, expirationMinutes: null});
+                          }
+                        }}
+                      />
+                      <label htmlFor="useExpiration" className="text-sm">Enable time-based expiration (unlimited uses during time period)</label>
+                    </div>
+                    
+                    {tempSettings.expirationMinutes !== null && (
+                      <Slider
+                        value={[tempSettings.expirationMinutes]}
+                        min={1}
+                        max={60}
+                        step={1}
+                        className="bg-[#1C2A41]"
+                        onValueChange={(value) => setTempSettings({...tempSettings, expirationMinutes: value[0]})}
+                      />
+                    )}
                   </div>
-                  <Slider
-                    value={[tempSettings.maxUses || 1]}
-                    min={1}
-                    max={10}
-                    step={1}
-                    className="bg-[#1C2A41]"
-                    onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
-                  />
-                </div>
+                  
+                  {tempSettings.expirationMinutes === null && (
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <label className="text-sm font-medium">
+                          Maximum Uses Per Code
+                        </label>
+                        <span className="text-sm text-networx-light/70">
+                          {tempSettings.maxUses} uses
+                        </span>
+                      </div>
+                      <Slider
+                        value={[tempSettings.maxUses || 1]}
+                        min={1}
+                        max={10}
+                        step={1}
+                        className="bg-[#1C2A41]"
+                        onValueChange={(value) => setTempSettings({...tempSettings, maxUses: value[0]})}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
             
             <div className="pt-2">
               <p className="text-xs text-networx-light/70">
-                {tempSettings.expirationMinutes !== null 
-                  ? "Time-based codes allow unlimited people to connect during the specified time period."
-                  : "Use-based codes allow a specific number of connections before expiring."
+                {tempSettings.usePermanentCode 
+                  ? "Permanent codes never expire and allow unlimited connections."
+                  : tempSettings.expirationMinutes !== null 
+                    ? "Time-based codes allow unlimited people to connect during the specified time period."
+                    : "Use-based codes allow a specific number of connections before expiring."
                 }
               </p>
             </div>

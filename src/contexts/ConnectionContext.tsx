@@ -22,6 +22,8 @@ export type Connection = {
 export type CodeSettings = {
   expirationMinutes: number | null; // Null for no expiration
   maxUses: number | null; // Null for unlimited uses within expiration time
+  permanentCode: string | null; // User's permanent code
+  usePermanentCode: boolean; // Whether to use permanent code
 };
 
 type CodeStatus = {
@@ -30,6 +32,7 @@ type CodeStatus = {
   settings: CodeSettings;
   usesLeft: number | null; // Null for unlimited uses
   isExpired: boolean;
+  isPermanent: boolean; // Whether this is a permanent code
 };
 
 type ConnectionContextType = {
@@ -50,6 +53,8 @@ type ConnectionContextType = {
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
   expirationMinutes: 15, // Default: 15 minutes expiration
   maxUses: null, // Default: unlimited uses within time period
+  permanentCode: null,
+  usePermanentCode: false,
 };
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
@@ -186,6 +191,23 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem(`networx-code-settings-${user.id}`, JSON.stringify(newSettings));
     }
     
+    // If permanent code is enabled and we have a permanent code, generate it
+    if (newSettings.usePermanentCode && newSettings.permanentCode) {
+      const permanentCodeStatus: CodeStatus = {
+        code: newSettings.permanentCode,
+        createdAt: new Date().toISOString(),
+        settings: newSettings,
+        usesLeft: null, // Permanent codes have unlimited uses
+        isExpired: false,
+        isPermanent: true
+      };
+      
+      setCurrentCode(permanentCodeStatus);
+      if (user) {
+        localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(permanentCodeStatus));
+      }
+    }
+    
     toast({
       title: "Settings updated",
       description: "Your connection code settings have been saved",
@@ -193,25 +215,34 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const generateConnectionCode = (customSettings?: Partial<CodeSettings>) => {
-    // Generate a random 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Use custom settings or default
     const settings = {
       ...defaultCodeSettings,
       ...(customSettings || {})
     };
     
-    // Create code status object - for expiration-based codes, maxUses should be null (unlimited during time period)
+    let code: string;
+    let isPermanent = false;
+    
+    // Use permanent code if enabled and available
+    if (settings.usePermanentCode && settings.permanentCode) {
+      code = settings.permanentCode;
+      isPermanent = true;
+    } else {
+      // Generate a random 6-digit code
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+    
+    // Create code status object
     const codeStatus: CodeStatus = {
       code,
       createdAt: new Date().toISOString(),
       settings: {
         ...settings,
-        maxUses: settings.expirationMinutes !== null ? null : settings.maxUses // Unlimited uses during expiration time
+        maxUses: settings.expirationMinutes !== null ? null : settings.maxUses
       },
-      usesLeft: settings.expirationMinutes !== null ? null : settings.maxUses, // Unlimited during time period
-      isExpired: false
+      usesLeft: settings.expirationMinutes !== null ? null : settings.maxUses,
+      isExpired: false,
+      isPermanent
     };
     
     // Store in state and localStorage
@@ -220,14 +251,14 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(codeStatus));
       
-      // Only set expiration timeout if there is an expiration time
-      if (settings.expirationMinutes !== null) {
+      // Only set expiration timeout for non-permanent codes with expiration time
+      if (!isPermanent && settings.expirationMinutes !== null) {
         const expirationTime = settings.expirationMinutes * 60 * 1000;
         setTimeout(() => {
           const currentStoredCode = localStorage.getItem(`networx-connection-code-${user.id}`);
           if (currentStoredCode) {
             const parsedCode = JSON.parse(currentStoredCode);
-            if (parsedCode.code === code) {
+            if (parsedCode.code === code && !parsedCode.isPermanent) {
               localStorage.removeItem(`networx-connection-code-${user.id}`);
               setCurrentCode(null);
             }
