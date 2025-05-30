@@ -9,13 +9,232 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      code_settings: {
+        Row: {
+          created_at: string | null
+          default_expiration_minutes: number | null
+          default_max_uses: number | null
+          id: string
+          permanent_code: string | null
+          updated_at: string | null
+          use_permanent_code: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_expiration_minutes?: number | null
+          default_max_uses?: number | null
+          id?: string
+          permanent_code?: string | null
+          updated_at?: string | null
+          use_permanent_code?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_expiration_minutes?: number | null
+          default_max_uses?: number | null
+          id?: string
+          permanent_code?: string | null
+          updated_at?: string | null
+          use_permanent_code?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connection_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          current_uses: number | null
+          expiration_minutes: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          is_permanent: boolean | null
+          max_uses: number | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          current_uses?: number | null
+          expiration_minutes?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_permanent?: boolean | null
+          max_uses?: number | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          current_uses?: number | null
+          expiration_minutes?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_permanent?: boolean | null
+          max_uses?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connection_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connections: {
+        Row: {
+          calls_muted: boolean | null
+          connected_user_id: string | null
+          created_at: string | null
+          custom_name: string | null
+          id: string
+          identity_code: string | null
+          is_industry: boolean | null
+          is_muted: boolean | null
+          name: string
+          profile_image: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          calls_muted?: boolean | null
+          connected_user_id?: string | null
+          created_at?: string | null
+          custom_name?: string | null
+          id?: string
+          identity_code?: string | null
+          is_industry?: boolean | null
+          is_muted?: boolean | null
+          name: string
+          profile_image?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          calls_muted?: boolean | null
+          connected_user_id?: string | null
+          created_at?: string | null
+          custom_name?: string | null
+          id?: string
+          identity_code?: string | null
+          is_industry?: boolean | null
+          is_muted?: boolean | null
+          name?: string
+          profile_image?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_connected_user_id_fkey"
+            columns: ["connected_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          connection_id: string
+          content: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          sender_id: string
+        }
+        Insert: {
+          connection_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id: string
+        }
+        Update: {
+          connection_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_codes: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,15 +1,16 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { Connection, useConnection } from './ConnectionContext';
+import { useConnection } from './ConnectionContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export type Message = {
   id: string;
-  connectionId: string;
-  senderId: string;
+  connection_id: string;
+  sender_id: string;
   content: string;
-  timestamp: string;
-  isRead: boolean;
+  created_at: string;
+  is_read: boolean;
 };
 
 type ChatContextType = {
@@ -17,6 +18,7 @@ type ChatContextType = {
   sendMessage: (connectionId: string, content: string) => void;
   getMessagesForConnection: (connectionId: string) => Message[];
   markMessagesAsRead: (connectionId: string) => void;
+  isLoading: boolean;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -33,105 +35,114 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const { connections } = useConnection();
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  // For demo: load messages from localStorage
   useEffect(() => {
-    if (user) {
-      const storedMessages = localStorage.getItem(`networx-messages-${user.id}`);
-      if (storedMessages) {
-        setMessages(JSON.parse(storedMessages));
-      } else {
-        // Create initial messages for demo connections
-        const initialMessages: Record<string, Message[]> = {};
-        
-        connections.forEach(connection => {
-          initialMessages[connection.id] = [
-            {
-              id: crypto.randomUUID(),
-              connectionId: connection.id,
-              senderId: connection.userId,
-              content: "Hey there! This is a demo message.",
-              timestamp: new Date(Date.now() - 3600000).toISOString(),
-              isRead: true
-            },
-            {
-              id: crypto.randomUUID(),
-              connectionId: connection.id,
-              senderId: user.id,
-              content: "Hi! Nice to meet you through NetworX!",
-              timestamp: new Date(Date.now() - 3000000).toISOString(),
-              isRead: true
-            },
-            {
-              id: crypto.randomUUID(),
-              connectionId: connection.id,
-              senderId: connection.userId,
-              content: connection.lastMessage?.content || "How's it going?",
-              timestamp: connection.lastMessage?.timestamp || new Date().toISOString(),
-              isRead: connection.lastMessage?.isRead || false
-            }
-          ];
-        });
-        
-        setMessages(initialMessages);
-        localStorage.setItem(`networx-messages-${user.id}`, JSON.stringify(initialMessages));
-      }
+    if (user && connections.length > 0) {
+      loadMessages();
     }
   }, [user, connections]);
 
-  // Update localStorage when messages change
-  useEffect(() => {
-    if (user && Object.keys(messages).length > 0) {
-      localStorage.setItem(`networx-messages-${user.id}`, JSON.stringify(messages));
-    }
-  }, [messages, user]);
+  const loadMessages = async () => {
+    if (!user || connections.length === 0) return;
 
-  const sendMessage = (connectionId: string, content: string) => {
-    if (!content.trim()) return;
+    try {
+      const connectionIds = connections.map(conn => conn.id);
+      
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .in('connection_id', connectionIds)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Group messages by connection_id
+      const groupedMessages: Record<string, Message[]> = {};
+      data?.forEach(message => {
+        if (!groupedMessages[message.connection_id]) {
+          groupedMessages[message.connection_id] = [];
+        }
+        groupedMessages[message.connection_id].push(message);
+      });
+
+      setMessages(groupedMessages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendMessage = async (connectionId: string, content: string) => {
+    if (!content.trim() || !user) return;
     
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
-      connectionId,
-      senderId: user?.id || '',
-      content,
-      timestamp: new Date().toISOString(),
-      isRead: false
-    };
-    
-    setMessages(prev => {
-      const connectionMessages = prev[connectionId] || [];
-      return {
-        ...prev,
-        [connectionId]: [...connectionMessages, newMessage]
-      };
-    });
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          connection_id: connectionId,
+          sender_id: user.id,
+          content,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setMessages(prev => {
+        const connectionMessages = prev[connectionId] || [];
+        return {
+          ...prev,
+          [connectionId]: [...connectionMessages, data]
+        };
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const getMessagesForConnection = (connectionId: string): Message[] => {
     return messages[connectionId] || [];
   };
 
-  const markMessagesAsRead = (connectionId: string) => {
-    setMessages(prev => {
-      const connectionMessages = prev[connectionId] || [];
-      const updatedMessages = connectionMessages.map(msg => 
-        msg.senderId !== user?.id && !msg.isRead 
-          ? { ...msg, isRead: true } 
-          : msg
-      );
-      
-      return {
-        ...prev,
-        [connectionId]: updatedMessages
-      };
-    });
+  const markMessagesAsRead = async (connectionId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('connection_id', connectionId)
+        .neq('sender_id', user.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
+      setMessages(prev => {
+        const connectionMessages = prev[connectionId] || [];
+        const updatedMessages = connectionMessages.map(msg => 
+          msg.sender_id !== user.id && !msg.is_read 
+            ? { ...msg, is_read: true } 
+            : msg
+        );
+        
+        return {
+          ...prev,
+          [connectionId]: updatedMessages
+        };
+      });
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
   };
 
   const value = {
     messages,
     sendMessage,
     getMessagesForConnection,
-    markMessagesAsRead
+    markMessagesAsRead,
+    isLoading,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

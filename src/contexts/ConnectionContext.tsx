@@ -1,45 +1,15 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
-export type Connection = {
-  id: string;
-  userId: string;
-  name: string;
-  lastMessage?: {
-    content: string;
-    timestamp: string;
-    isRead: boolean;
-  };
-  profileImage?: string;
-  connectionCode?: string;
-  muted: boolean;
-  callsMuted: boolean;
-  isIndustry?: boolean;
-  identityCode?: string;
-};
-
-export type CodeSettings = {
-  expirationMinutes: number | null; // Null for no expiration
-  maxUses: number | null; // Null for unlimited uses within expiration time
-  permanentCode: string | null; // User's permanent code
-  usePermanentCode: boolean; // Whether to use permanent code
-};
-
-type CodeStatus = {
-  code: string;
-  createdAt: string;
-  settings: CodeSettings;
-  usesLeft: number | null; // Null for unlimited uses
-  isExpired: boolean;
-  isPermanent: boolean; // Whether this is a permanent code
-};
+import { Connection, CodeSettings, CodeStatus } from '@/types/connection';
 
 type ConnectionContextType = {
   connections: Connection[];
   activeConnection: Connection | null;
   setActiveConnection: (connection: Connection | null) => void;
-  generateConnectionCode: (settings?: Partial<CodeSettings>) => string;
+  generateConnectionCode: (settings?: Partial<CodeSettings>) => Promise<string>;
   verifyConnectionCode: (code: string) => Promise<boolean>;
   addConnection: (connection: Connection) => void;
   removeConnection: (connectionId: string) => void;
@@ -50,17 +20,15 @@ type ConnectionContextType = {
   defaultCodeSettings: CodeSettings;
   validatePermanentCode: (code: string) => boolean;
   updateConnectionName: (connectionId: string, newName: string) => void;
+  isLoading: boolean;
 };
 
 const DEFAULT_CODE_SETTINGS: CodeSettings = {
-  expirationMinutes: 15, // Default: 15 minutes expiration
-  maxUses: null, // Default: unlimited uses within time period
+  expirationMinutes: 15,
+  maxUses: null,
   permanentCode: null,
   usePermanentCode: false,
 };
-
-// Store of used codes to prevent collisions (in real app, this would be server-side)
-const USED_CODES = new Set<string>();
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
 
@@ -78,115 +46,106 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   const [activeConnection, setActiveConnection] = useState<Connection | null>(null);
   const [currentCode, setCurrentCode] = useState<CodeStatus | null>(null);
   const [defaultCodeSettings, setDefaultCodeSettings] = useState<CodeSettings>(DEFAULT_CODE_SETTINGS);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // For demo: load mock connections from localStorage
+  // Load connections from Supabase
   useEffect(() => {
     if (user) {
-      const storedConnections = localStorage.getItem(`networx-connections-${user.id}`);
-      if (storedConnections) {
-        setConnections(JSON.parse(storedConnections));
-      } else {
-        // Add some dummy connections for demo
-        const demoConnections: Connection[] = [
-          {
-            id: '1',
-            userId: 'user-1',
-            name: 'Alice Smith',
-            lastMessage: {
-              content: 'Hey, how are you doing?',
-              timestamp: new Date().toISOString(),
-              isRead: false,
-            },
-            muted: false,
-            callsMuted: false,
-            identityCode: 'NX-12345',
-          },
-          {
-            id: '2',
-            userId: 'user-2',
-            name: 'Bob Johnson',
-            lastMessage: {
-              content: 'Did you see the movie last night?',
-              timestamp: new Date(Date.now() - 3600000).toISOString(),
-              isRead: true,
-            },
-            muted: false,
-            callsMuted: false,
-            identityCode: 'NX-67890',
-          },
-        ];
-        setConnections(demoConnections);
-        localStorage.setItem(`networx-connections-${user.id}`, JSON.stringify(demoConnections));
-      }
-      
-      // Also load any active code
-      const storedCode = localStorage.getItem(`networx-connection-code-${user.id}`);
-      if (storedCode) {
-        const parsedCode = JSON.parse(storedCode) as CodeStatus;
-        
-        // Check if code is expired (if it has an expiration time)
-        if (parsedCode.settings.expirationMinutes !== null) {
-          const expirationTime = new Date(parsedCode.createdAt).getTime() + 
-            (parsedCode.settings.expirationMinutes * 60 * 1000);
-          
-          if (expirationTime > Date.now()) {
-            setCurrentCode({
-              ...parsedCode,
-              isExpired: false
-            });
-          } else {
-            // Clean up expired code
-            localStorage.removeItem(`networx-connection-code-${user.id}`);
-            setCurrentCode(null);
-          }
-        } else {
-          // For codes with no expiration, they should stay active indefinitely
-          setCurrentCode({
-            ...parsedCode,
-            isExpired: false
-          });
-        }
-      }
-      
-      // Load custom settings
-      const storedSettings = localStorage.getItem(`networx-code-settings-${user.id}`);
-      if (storedSettings) {
-        setDefaultCodeSettings(JSON.parse(storedSettings));
-      }
+      loadConnections();
+      loadCodeSettings();
+      loadCurrentCode();
     }
   }, [user]);
 
-  // Update localStorage when connections change
-  useEffect(() => {
-    if (user && connections.length > 0) {
-      localStorage.setItem(`networx-connections-${user.id}`, JSON.stringify(connections));
-    }
-  }, [connections, user]);
-
-  // Check for code expiration
-  useEffect(() => {
-    if (!currentCode || !user || currentCode.settings.expirationMinutes === null) return;
+  const loadConnections = async () => {
+    if (!user) return;
     
-    const checkCodeExpiration = () => {
-      const expirationTime = new Date(currentCode.createdAt).getTime() + 
-        (currentCode.settings.expirationMinutes * 60 * 1000);
-      
-      if (expirationTime <= Date.now()) {
-        localStorage.removeItem(`networx-connection-code-${user.id}`);
-        setCurrentCode(null);
-        toast({
-          title: "Connection code expired",
-          description: "Your time-limited code is no longer valid",
+    try {
+      const { data, error } = await supabase
+        .from('connections')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setConnections(data || []);
+    } catch (error) {
+      console.error('Error loading connections:', error);
+      toast({
+        title: "Error loading connections",
+        description: "Failed to load your connections",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadCodeSettings = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('code_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data) {
+        setDefaultCodeSettings({
+          expirationMinutes: data.default_expiration_minutes,
+          maxUses: data.default_max_uses,
+          permanentCode: data.permanent_code,
+          usePermanentCode: data.use_permanent_code || false,
         });
       }
-    };
-    
-    const intervalId = setInterval(checkCodeExpiration, 10000); // Check every 10 seconds
-    return () => clearInterval(intervalId);
-  }, [currentCode, user]);
+    } catch (error) {
+      console.error('Error loading code settings:', error);
+    }
+  };
+
+  const loadCurrentCode = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('connection_codes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const codeData = data[0];
+        const isExpired = codeData.expires_at ? new Date(codeData.expires_at) < new Date() : false;
+        
+        if (!isExpired) {
+          setCurrentCode({
+            code: codeData.code,
+            createdAt: codeData.created_at,
+            settings: {
+              expirationMinutes: codeData.expiration_minutes,
+              maxUses: codeData.max_uses,
+              permanentCode: codeData.is_permanent ? codeData.code : null,
+              usePermanentCode: codeData.is_permanent,
+            },
+            usesLeft: codeData.max_uses ? (codeData.max_uses - codeData.current_uses) : null,
+            isExpired: false,
+            isPermanent: codeData.is_permanent,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading current code:', error);
+    }
+  };
 
   const validatePermanentCode = (code: string): boolean => {
-    // Check if code is 6 digits
     if (!/^\d{6}$/.test(code)) {
       toast({
         title: "Invalid code format",
@@ -195,75 +154,56 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
       return false;
     }
-
-    // Check if code is already in use
-    if (USED_CODES.has(code)) {
-      toast({
-        title: "Code already in use",
-        description: "This code is already taken by another user. Please choose a different one.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Check against existing user's current code
-    if (currentCode && currentCode.code === code) {
-      return true; // User is setting the same code they already have
-    }
-
     return true;
   };
 
-  const updateCodeSettings = (settings: Partial<CodeSettings>) => {
+  const updateCodeSettings = async (settings: Partial<CodeSettings>) => {
+    if (!user) return;
+
     const newSettings = {
       ...defaultCodeSettings,
       ...settings
     };
     
-    // Validate permanent code if being set
     if (newSettings.usePermanentCode && newSettings.permanentCode) {
       if (!validatePermanentCode(newSettings.permanentCode)) {
-        return; // Validation failed, don't update
+        return;
       }
     }
     
-    setDefaultCodeSettings(newSettings);
-    if (user) {
-      localStorage.setItem(`networx-code-settings-${user.id}`, JSON.stringify(newSettings));
+    try {
+      const { error } = await supabase
+        .from('code_settings')
+        .upsert({
+          user_id: user.id,
+          default_expiration_minutes: newSettings.expirationMinutes,
+          default_max_uses: newSettings.maxUses,
+          permanent_code: newSettings.permanentCode,
+          use_permanent_code: newSettings.usePermanentCode,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      setDefaultCodeSettings(newSettings);
+      
+      toast({
+        title: "Settings updated",
+        description: "Your connection code settings have been saved",
+      });
+    } catch (error) {
+      console.error('Error updating code settings:', error);
+      toast({
+        title: "Error updating settings",
+        description: "Failed to save your settings",
+        variant: "destructive"
+      });
     }
-    
-    // If permanent code is enabled and we have a permanent code, generate it
-    if (newSettings.usePermanentCode && newSettings.permanentCode) {
-      // Remove old code from used set if it exists
-      if (currentCode && currentCode.isPermanent) {
-        USED_CODES.delete(currentCode.code);
-      }
-      
-      // Add new code to used set
-      USED_CODES.add(newSettings.permanentCode);
-      
-      const permanentCodeStatus: CodeStatus = {
-        code: newSettings.permanentCode,
-        createdAt: new Date().toISOString(),
-        settings: newSettings,
-        usesLeft: null, // Permanent codes have unlimited uses
-        isExpired: false,
-        isPermanent: true
-      };
-      
-      setCurrentCode(permanentCodeStatus);
-      if (user) {
-        localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(permanentCodeStatus));
-      }
-    }
-    
-    toast({
-      title: "Settings updated",
-      description: "Your connection code settings have been saved",
-    });
   };
 
-  const generateConnectionCode = (customSettings?: Partial<CodeSettings>) => {
+  const generateConnectionCode = async (customSettings?: Partial<CodeSettings>): Promise<string> => {
+    if (!user) return '000000';
+
     const settings = {
       ...defaultCodeSettings,
       ...(customSettings || {})
@@ -272,199 +212,277 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     let code: string;
     let isPermanent = false;
     
-    // Use permanent code if enabled and available
     if (settings.usePermanentCode && settings.permanentCode) {
       code = settings.permanentCode;
       isPermanent = true;
-      
-      // Add to used codes set
-      USED_CODES.add(code);
     } else {
-      // Generate a unique random 6-digit code
-      let attempts = 0;
-      do {
-        code = Math.floor(100000 + Math.random() * 900000).toString();
-        attempts++;
-        
-        // Prevent infinite loop
-        if (attempts > 100) {
-          toast({
-            title: "Code generation failed",
-            description: "Unable to generate a unique code. Please try again.",
-            variant: "destructive"
-          });
-          return currentCode?.code || '000000';
-        }
-      } while (USED_CODES.has(code));
-      
-      // Add to used codes set
-      USED_CODES.add(code);
+      code = Math.floor(100000 + Math.random() * 900000).toString();
     }
-    
-    // Remove old code from used set if it exists
-    if (currentCode && !currentCode.isPermanent) {
-      USED_CODES.delete(currentCode.code);
+
+    try {
+      // Deactivate any existing codes
+      await supabase
+        .from('connection_codes')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      const expiresAt = settings.expirationMinutes 
+        ? new Date(Date.now() + settings.expirationMinutes * 60 * 1000).toISOString()
+        : null;
+
+      const { data, error } = await supabase
+        .from('connection_codes')
+        .insert({
+          user_id: user.id,
+          code,
+          is_permanent: isPermanent,
+          expiration_minutes: settings.expirationMinutes,
+          max_uses: settings.maxUses,
+          expires_at: expiresAt,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const codeStatus: CodeStatus = {
+        code,
+        createdAt: data.created_at,
+        settings,
+        usesLeft: settings.maxUses,
+        isExpired: false,
+        isPermanent
+      };
+
+      setCurrentCode(codeStatus);
+      return code;
+    } catch (error) {
+      console.error('Error generating connection code:', error);
+      toast({
+        title: "Code generation failed",
+        description: "Unable to generate connection code",
+        variant: "destructive"
+      });
+      return '000000';
     }
-    
-    // Create code status object
-    const codeStatus: CodeStatus = {
-      code,
-      createdAt: new Date().toISOString(),
-      settings: {
-        ...settings,
-        maxUses: settings.expirationMinutes !== null ? null : settings.maxUses
-      },
-      usesLeft: settings.expirationMinutes !== null ? null : settings.maxUses,
-      isExpired: false,
-      isPermanent
-    };
-    
-    // Store in state and localStorage
-    setCurrentCode(codeStatus);
-    
-    if (user) {
-      localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(codeStatus));
-      
-      // Only set expiration timeout for non-permanent codes with expiration time
-      if (!isPermanent && settings.expirationMinutes !== null) {
-        const expirationTime = settings.expirationMinutes * 60 * 1000;
-        setTimeout(() => {
-          const currentStoredCode = localStorage.getItem(`networx-connection-code-${user.id}`);
-          if (currentStoredCode) {
-            const parsedCode = JSON.parse(currentStoredCode);
-            if (parsedCode.code === code && !parsedCode.isPermanent) {
-              USED_CODES.delete(code); // Remove from used codes when expired
-              localStorage.removeItem(`networx-connection-code-${user.id}`);
-              setCurrentCode(null);
-            }
-          }
-        }, expirationTime);
-      }
-    }
-    
-    return code;
   };
 
   const verifyConnectionCode = async (code: string): Promise<boolean> => {
-    // In a real app, this would verify with the backend
-    // For demo, we'll simulate a successful connection
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For time-based codes, don't update uses since they're unlimited during the time period
-    // Only update uses for non-expiring codes with use limits
-    if (currentCode && currentCode.code === code && currentCode.settings.expirationMinutes === null && currentCode.usesLeft !== null) {
-      const updatedUsesLeft = currentCode.usesLeft - 1;
-      const updatedCode = {
-        ...currentCode,
-        usesLeft: updatedUsesLeft
-      };
-      
-      setCurrentCode(updatedCode);
-      if (user) {
-        if (updatedUsesLeft <= 0) {
-          USED_CODES.delete(code); // Remove from used codes when expired
-          localStorage.removeItem(`networx-connection-code-${user.id}`);
-          setCurrentCode(null);
+    if (!user) return false;
+
+    try {
+      // Find the code owner
+      const { data: codeData, error: codeError } = await supabase
+        .from('connection_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (codeError || !codeData) {
+        toast({
+          title: "Invalid code",
+          description: "The connection code is not valid or has expired",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // Check if code is expired
+      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+        toast({
+          title: "Code expired",
+          description: "This connection code has expired",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // Create the connection
+      const { error: connectionError } = await supabase
+        .from('connections')
+        .insert({
+          user_id: user.id,
+          connected_user_id: codeData.user_id,
+          name: `User ${Math.floor(Math.random() * 100)}`,
+          identity_code: `NX-${Math.floor(10000 + Math.random() * 90000)}`,
+        });
+
+      if (connectionError) throw connectionError;
+
+      // Update code usage
+      if (codeData.max_uses) {
+        const newUses = codeData.current_uses + 1;
+        if (newUses >= codeData.max_uses) {
+          await supabase
+            .from('connection_codes')
+            .update({ is_active: false, current_uses: newUses })
+            .eq('id', codeData.id);
         } else {
-          USED_CODES.add(code); // Add back to used codes if still valid
-          localStorage.setItem(`networx-connection-code-${user.id}`, JSON.stringify(updatedCode));
+          await supabase
+            .from('connection_codes')
+            .update({ current_uses: newUses })
+            .eq('id', codeData.id);
         }
       }
+
+      await loadConnections();
+      toast({
+        title: "Connection successful!",
+        description: "You're now connected!",
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying connection code:', error);
+      toast({
+        title: "Connection failed",
+        description: "Unable to establish connection",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    // Add a mock connection for the code
-    const newConnection: Connection = {
-      id: crypto.randomUUID(),
-      userId: `user-${Math.floor(Math.random() * 1000)}`,
-      name: `User ${Math.floor(Math.random() * 100)}`,
-      lastMessage: {
-        content: 'Connected via one-time code',
-        timestamp: new Date().toISOString(),
-        isRead: false,
-      },
-      muted: false,
-      callsMuted: false,
-      identityCode: `NX-${Math.floor(10000 + Math.random() * 90000)}`,
-    };
-    
-    addConnection(newConnection);
-    toast({
-      title: "Connection successful!",
-      description: `You're now connected with ${newConnection.name}`,
-    });
-    
-    return true;
   };
 
   const addConnection = (connection: Connection) => {
     setConnections(prev => [...prev, connection]);
   };
 
-  const removeConnection = (connectionId: string) => {
-    setConnections(prev => prev.filter(conn => conn.id !== connectionId));
-    if (activeConnection?.id === connectionId) {
-      setActiveConnection(null);
+  const removeConnection = async (connectionId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .delete()
+        .eq('id', connectionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setConnections(prev => prev.filter(conn => conn.id !== connectionId));
+      if (activeConnection?.id === connectionId) {
+        setActiveConnection(null);
+      }
+      
+      toast({
+        title: "Connection removed",
+        description: "This contact can no longer message you",
+      });
+    } catch (error) {
+      console.error('Error removing connection:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove connection",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Connection removed",
-      description: "This contact can no longer message you",
-    });
   };
 
-  const muteConnection = (connectionId: string) => {
-    setConnections(prev => 
-      prev.map(conn => 
-        conn.id === connectionId 
-          ? { ...conn, muted: !conn.muted } 
-          : conn
-      )
-    );
-    
-    const connection = connections.find(conn => conn.id === connectionId);
-    const newMuteState = !connection?.muted;
-    
-    toast({
-      title: newMuteState ? "Chat muted" : "Chat unmuted",
-      description: newMuteState ? "You won't receive notifications from this chat" : "You will now receive notifications from this chat",
-    });
-  };
+  const muteConnection = async (connectionId: string) => {
+    if (!user) return;
 
-  const muteConnectionCalls = (connectionId: string) => {
-    setConnections(prev => 
-      prev.map(conn => 
-        conn.id === connectionId 
-          ? { ...conn, callsMuted: !conn.callsMuted } 
-          : conn
-      )
-    );
-    
-    const connection = connections.find(conn => conn.id === connectionId);
-    const newMuteState = !connection?.callsMuted;
-    
-    toast({
-      title: newMuteState ? "Calls muted" : "Calls unmuted",
-      description: newMuteState ? "You won't receive call notifications from this contact" : "You will now receive call notifications from this contact",
-    });
-  };
+    try {
+      const connection = connections.find(conn => conn.id === connectionId);
+      if (!connection) return;
 
-  const updateConnectionName = (connectionId: string, newName: string) => {
-    setConnections(prev => 
-      prev.map(conn => 
-        conn.id === connectionId 
-          ? { ...conn, name: newName } 
-          : conn
-      )
-    );
-    
-    // Update active connection if it's the one being renamed
-    if (activeConnection?.id === connectionId) {
-      setActiveConnection(prev => prev ? { ...prev, name: newName } : null);
+      const newMuteState = !connection.is_muted;
+
+      const { error } = await supabase
+        .from('connections')
+        .update({ is_muted: newMuteState })
+        .eq('id', connectionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, is_muted: newMuteState } 
+            : conn
+        )
+      );
+      
+      toast({
+        title: newMuteState ? "Chat muted" : "Chat unmuted",
+        description: newMuteState ? "You won't receive notifications from this chat" : "You will now receive notifications from this chat",
+      });
+    } catch (error) {
+      console.error('Error muting connection:', error);
     }
-    
-    toast({
-      title: "Connection name updated",
-      description: `Contact renamed to ${newName}`,
-    });
+  };
+
+  const muteConnectionCalls = async (connectionId: string) => {
+    if (!user) return;
+
+    try {
+      const connection = connections.find(conn => conn.id === connectionId);
+      if (!connection) return;
+
+      const newMuteState = !connection.calls_muted;
+
+      const { error } = await supabase
+        .from('connections')
+        .update({ calls_muted: newMuteState })
+        .eq('id', connectionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, calls_muted: newMuteState } 
+            : conn
+        )
+      );
+      
+      toast({
+        title: newMuteState ? "Calls muted" : "Calls unmuted",
+        description: newMuteState ? "You won't receive call notifications from this contact" : "You will now receive call notifications from this contact",
+      });
+    } catch (error) {
+      console.error('Error muting connection calls:', error);
+    }
+  };
+
+  const updateConnectionName = async (connectionId: string, newName: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .update({ custom_name: newName })
+        .eq('id', connectionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, custom_name: newName } 
+            : conn
+        )
+      );
+      
+      if (activeConnection?.id === connectionId) {
+        setActiveConnection(prev => prev ? { ...prev, custom_name: newName } : null);
+      }
+      
+      toast({
+        title: "Connection name updated",
+        description: `Contact renamed to ${newName}`,
+      });
+    } catch (error) {
+      console.error('Error updating connection name:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update connection name",
+        variant: "destructive"
+      });
+    }
   };
 
   const value = {
@@ -482,6 +500,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     defaultCodeSettings,
     validatePermanentCode,
     updateConnectionName,
+    isLoading,
   };
 
   return <ConnectionContext.Provider value={value}>{children}</ConnectionContext.Provider>;

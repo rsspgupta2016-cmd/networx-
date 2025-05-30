@@ -1,24 +1,25 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import type { User } from '@supabase/supabase-js';
 
-type User = {
+type AuthUser = {
   id: string;
-  phoneNumber: string;
+  email: string;
   displayName: string;
   profileImage?: string;
-  identityCode?: string; // Unique identity code
-  interests: string[]; // Added interests field
+  identityCode?: string;
+  interests: string[];
 };
 
 type AuthContextType = {
-  user: User | null;
+  user: AuthUser | null;
   isLoading: boolean;
-  login: (phoneNumber: string, code: string) => Promise<void>;
-  signup: (phoneNumber: string, displayName: string, interests: string[]) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string, interests: string[]) => Promise<void>;
   logout: () => void;
-  sendVerificationCode: (phoneNumber: string) => Promise<void>;
-  updateUserProfile: (updates: Partial<Omit<User, 'id' | 'phoneNumber' | 'identityCode'>>) => Promise<void>;
+  updateUserProfile: (updates: Partial<Omit<AuthUser, 'id' | 'email' | 'identityCode'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,77 +32,68 @@ export const useAuth = () => {
   return context;
 };
 
-// Generate a unique identity code for users
-const generateIdentityCode = (): string => {
-  const prefix = 'NX';
-  const middlePart = Math.floor(10000 + Math.random() * 90000).toString();
-  const suffix = Array(4)
-    .fill(0)
-    .map(() => String.fromCharCode(65 + Math.floor(Math.random() * 26)))
-    .join('');
-  
-  return `${prefix}-${middlePart}-${suffix}`;
-};
-
-// Mock encryption for demo purposes (in a real app, use a proper encryption library)
-const encryptPhoneNumber = (phoneNumber: string): string => {
-  // In a real app, this would use AES-256 or similar strong encryption
-  // For demo, we'll do a simple obfuscation
-  return btoa(`encrypted-${phoneNumber}-with-aes-256`);
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // For demo purposes, check if user exists in localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('networx-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user);
+      }
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await loadUserProfile(session.user);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (phoneNumber: string, code: string) => {
+  const loadUserProfile = async (authUser: User) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      setUser({
+        id: authUser.id,
+        email: authUser.email || '',
+        displayName: profile?.full_name || authUser.email || '',
+        profileImage: profile?.avatar_url,
+        identityCode: `NX-${authUser.id.slice(0, 8).toUpperCase()}`,
+        interests: [],
+      });
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       
-      // In a real app, this would verify the code with Supabase/backend
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-      
-      // For demo: validate code (would be done by backend)
-      if (code !== '123456') {
-        throw new Error("Invalid verification code");
-      }
-      
-      // In a real app, encrypted phone number would be stored in Supabase
-      // and the identity code would be retrieved from the database
-      const storedEncryptedPhone = localStorage.getItem(`networx-encrypted-${phoneNumber}`);
-      let identityCode = '';
-      
-      if (storedEncryptedPhone) {
-        // Get existing identity code for this phone
-        const storedIdentity = localStorage.getItem(`networx-identity-${phoneNumber}`);
-        identityCode = storedIdentity || generateIdentityCode();
-      } else {
-        // Generate new identity code for first login
-        identityCode = generateIdentityCode();
-        localStorage.setItem(`networx-encrypted-${phoneNumber}`, encryptPhoneNumber(phoneNumber));
-        localStorage.setItem(`networx-identity-${phoneNumber}`, identityCode);
-      }
-      
-      // Check if user exists in our mock database
-      const mockUser = {
-        id: crypto.randomUUID(),
-        phoneNumber,
-        displayName: phoneNumber.replace('+', ''), // Default name
-        identityCode,
-        interests: [] // Default empty interests
-      };
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      setUser(mockUser);
-      localStorage.setItem('networx-user', JSON.stringify(mockUser));
+      if (error) throw error;
+
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
@@ -118,34 +110,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signup = async (phoneNumber: string, displayName: string, interests: string[] = []) => {
+  const signup = async (email: string, password: string, displayName: string, interests: string[] = []) => {
     try {
       setIsLoading(true);
       
-      // In a real app, this would create a user in Supabase
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-      
-      // Generate encrypted phone number and identity code
-      const encryptedPhone = encryptPhoneNumber(phoneNumber);
-      const identityCode = generateIdentityCode();
-      
-      // In a real app, these would be stored in Supabase
-      localStorage.setItem(`networx-encrypted-${phoneNumber}`, encryptedPhone);
-      localStorage.setItem(`networx-identity-${phoneNumber}`, identityCode);
-      
-      const newUser = {
-        id: crypto.randomUUID(),
-        phoneNumber,
-        displayName: displayName || phoneNumber.replace('+', ''),
-        identityCode,
-        interests // Store user interests
-      };
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: displayName,
+          }
+        }
+      });
 
-      setUser(newUser);
-      localStorage.setItem('networx-user', JSON.stringify(newUser));
+      if (error) throw error;
+
       toast({
         title: "Account created!",
-        description: "Your NetworX account has been created successfully.",
+        description: "Please check your email to verify your account.",
       });
     } catch (error: any) {
       toast({
@@ -159,22 +142,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const updateUserProfile = async (updates: Partial<Omit<User, 'id' | 'phoneNumber' | 'identityCode'>>) => {
+  const updateUserProfile = async (updates: Partial<Omit<AuthUser, 'id' | 'email' | 'identityCode'>>) => {
     if (!user) return;
     
     try {
       setIsLoading(true);
       
-      // In a real app, this would update user data in Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: updates.displayName,
+          avatar_url: updates.profileImage,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
       
-      const updatedUser = {
-        ...user,
-        ...updates
-      };
-      
-      setUser(updatedUser);
-      localStorage.setItem('networx-user', JSON.stringify(updatedUser));
+      setUser(prev => prev ? { ...prev, ...updates } : null);
       
       toast({
         title: "Profile updated",
@@ -192,32 +176,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const sendVerificationCode = async (phoneNumber: string) => {
+  const logout = async () => {
     try {
-      // In a real app, this would send an SMS via Supabase Functions
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       
+      setUser(null);
       toast({
-        title: "Verification code sent",
-        description: `A code has been sent to ${phoneNumber}`,
+        title: "Logged out",
+        description: "You have been logged out successfully.",
       });
     } catch (error: any) {
       toast({
-        title: "Failed to send code",
-        description: error.message || "Please try again later",
+        title: "Logout failed",
+        description: error.message || "Something went wrong",
         variant: "destructive",
       });
-      throw error;
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('networx-user');
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully.",
-    });
   };
 
   const value = {
@@ -226,8 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     signup,
     logout,
-    sendVerificationCode,
-    updateUserProfile, // Add the new method
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
