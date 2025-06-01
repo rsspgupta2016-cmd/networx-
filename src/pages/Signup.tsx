@@ -106,7 +106,7 @@ const Signup = () => {
           <CardTitle className="text-2xl font-bold">NetworX</CardTitle>
           <CardDescription>
             {step === 'phone' && 'Create a new account'}
-            {step === 'otp' && 'Verify your mobile number'}
+            {step === 'otp' && 'Verify your mobile number (Demo)'}
             {step === 'profile' && 'Set up your profile'}
             {step === 'interests' && 'Almost done!'}
           </CardDescription>
@@ -146,6 +146,9 @@ const Signup = () => {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground text-center">
                     We sent a verification code to {phoneNumber}
+                  </p>
+                  <p className="text-xs text-blue-600 text-center">
+                    Demo: Enter any 6-digit code to proceed
                   </p>
                   <div className="flex justify-center">
                     <InputOTP

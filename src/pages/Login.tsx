@@ -63,7 +63,7 @@ const Login = () => {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">NetworX</CardTitle>
           <CardDescription>
-            {step === 'phone' ? 'Sign in with your mobile number' : 'Enter the verification code'}
+            {step === 'phone' ? 'Sign in with your mobile number' : 'Enter the verification code (Demo)'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,6 +99,9 @@ const Login = () => {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground text-center">
                     We sent a verification code to {phoneNumber}
+                  </p>
+                  <p className="text-xs text-blue-600 text-center">
+                    Demo: Enter any 6-digit code to proceed
                   </p>
                   <div className="flex justify-center">
                     <InputOTP

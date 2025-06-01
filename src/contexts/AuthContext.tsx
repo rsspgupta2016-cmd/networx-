@@ -74,8 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser({
         id: authUser.id,
-        phone: authUser.phone || '',
-        displayName: profile?.full_name || authUser.phone || '',
+        phone: authUser.phone || authUser.email || '',
+        displayName: profile?.full_name || authUser.phone || authUser.email || '',
         profileImage: profile?.avatar_url,
         identityCode: `NX-${authUser.id.slice(0, 8).toUpperCase()}`,
         interests: [],
@@ -89,15 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
-      });
-
-      if (error) throw error;
-
+      // For demo purposes, we'll simulate sending OTP
+      // In production, you would configure phone auth in Supabase
+      console.log('Demo: OTP would be sent to', phone);
+      
       toast({
-        title: "OTP sent",
-        description: "Please check your phone for the verification code.",
+        title: "OTP sent (Demo)",
+        description: "For demo purposes, use any 6-digit code to proceed.",
       });
     } catch (error: any) {
       toast({
@@ -115,15 +113,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
-      });
-
-      if (error) throw error;
-
+      // For demo purposes, we'll simulate sending OTP
+      console.log('Demo: OTP would be sent to', phone);
+      
       toast({
-        title: "OTP sent",
-        description: "Please check your phone for the verification code.",
+        title: "OTP sent (Demo)",
+        description: "For demo purposes, use any 6-digit code to proceed.",
       });
     } catch (error: any) {
       toast({
@@ -141,18 +136,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.verifyOtp({
-        phone,
-        token,
-        type: 'sms',
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Phone verified",
-        description: "Your phone number has been verified successfully.",
-      });
+      // For demo purposes, accept any 6-digit OTP
+      if (token.length === 6) {
+        // Create a demo user with email auth (since phone auth isn't configured)
+        const demoEmail = `${phone.replace(/\D/g, '')}@demo.netwox.com`;
+        const demoPassword = 'demo123456';
+        
+        // Try to sign in first
+        let { data, error } = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword,
+        });
+        
+        // If user doesn't exist, create them
+        if (error && error.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: demoEmail,
+            password: demoPassword,
+            options: {
+              data: {
+                full_name: phone,
+                phone: phone,
+              }
+            }
+          });
+          
+          if (signUpError) throw signUpError;
+          data = signUpData;
+        } else if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Phone verified (Demo)",
+          description: "Your phone number has been verified successfully.",
+        });
+      } else {
+        throw new Error('Please enter a 6-digit code');
+      }
     } catch (error: any) {
       toast({
         title: "Verification failed",
@@ -173,6 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.updateUser({
         data: {
           full_name: displayName,
+          phone: phone,
         }
       });
 
