@@ -9,40 +9,21 @@ import { Loader } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, sendVerificationCode } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [step, setStep] = useState<'phone' | 'verification'>('phone');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!email || !password) {
       return;
     }
     
     try {
       setIsSubmitting(true);
-      await sendVerificationCode(phoneNumber);
-      setStep('verification');
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!verificationCode || verificationCode.length !== 6) {
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      await login(phoneNumber, verificationCode);
+      await login(email, password);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -57,75 +38,45 @@ const Login = () => {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">NetworX</CardTitle>
           <CardDescription>
-            {step === 'phone' 
-              ? 'Enter your phone number to continue' 
-              : 'Enter the verification code sent to your phone'}
+            Sign in to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'phone' ? (
-            <form onSubmit={handlePhoneSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1234567890"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Please wait</>
-                  ) : (
-                    'Get Verification Code'
-                  )}
-                </Button>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
-            </form>
-          ) : (
-            <form onSubmit={handleCodeSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Input
-                    id="code"
-                    type="text"
-                    placeholder="6-digit code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="text-center text-xl tracking-wider"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Verifying</>
-                  ) : (
-                    'Verify & Log in'
-                  )}
-                </Button>
-                <Button 
-                  type="button"
-                  variant="link" 
-                  className="w-full"
-                  onClick={() => setStep('phone')}
-                >
-                  Change Phone Number
-                </Button>
+              <div className="space-y-2">
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
               </div>
-            </form>
-          )}
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <><Loader className="mr-2 h-4 w-4 animate-spin" /> Please wait</>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">

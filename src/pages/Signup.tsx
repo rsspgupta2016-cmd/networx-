@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,47 +10,22 @@ import InterestsSelector from '@/components/InterestsSelector';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { signup, sendVerificationCode } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
+  const { signup } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
-  const [step, setStep] = useState<'phone' | 'verification' | 'profile' | 'interests'>('phone');
+  const [step, setStep] = useState<'credentials' | 'profile' | 'interests'>('credentials');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!email || !password) {
       return;
     }
     
-    try {
-      setIsSubmitting(true);
-      await sendVerificationCode(phoneNumber);
-      setStep('verification');
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!verificationCode || verificationCode.length !== 6) {
-      return;
-    }
-    
-    // In a real app, verify with backend
-    // For demo: hard-code the valid code as 123456
-    if (verificationCode === '123456') {
-      setStep('profile');
-    } else {
-      // Handle invalid code
-      alert('Invalid code. For demo, use 123456');
-    }
+    setStep('profile');
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -59,7 +35,6 @@ const Signup = () => {
       return;
     }
     
-    // Move to interests selection
     setStep('interests');
   };
   
@@ -67,7 +42,7 @@ const Signup = () => {
     try {
       setIsSubmitting(true);
       setInterests(selectedInterests);
-      await signup(phoneNumber, displayName, selectedInterests);
+      await signup(email, password, displayName, selectedInterests);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -79,7 +54,7 @@ const Signup = () => {
   const handleSkipInterests = async () => {
     try {
       setIsSubmitting(true);
-      await signup(phoneNumber, displayName, []);
+      await signup(email, password, displayName, []);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -94,24 +69,34 @@ const Signup = () => {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">NetworX</CardTitle>
           <CardDescription>
-            {step === 'phone' && 'Create a new account'}
-            {step === 'verification' && 'Enter the verification code sent to your phone'}
+            {step === 'credentials' && 'Create a new account'}
             {step === 'profile' && 'Set up your profile'}
             {step === 'interests' && 'Almost done!'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'phone' && (
-            <form onSubmit={handlePhoneSubmit}>
+          {step === 'credentials' && (
+            <form onSubmit={handleCredentialsSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1234567890"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
                   />
                 </div>
                 <Button 
@@ -122,49 +107,8 @@ const Signup = () => {
                   {isSubmitting ? (
                     <><Loader className="mr-2 h-4 w-4 animate-spin" /> Please wait</>
                   ) : (
-                    'Get Verification Code'
+                    'Continue'
                   )}
-                </Button>
-              </div>
-            </form>
-          )}
-          
-          {step === 'verification' && (
-            <form onSubmit={handleCodeSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Input
-                    id="code"
-                    type="text"
-                    placeholder="6-digit code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="text-center text-xl tracking-wider"
-                  />
-                  <p className="text-xs text-center text-muted-foreground">
-                    For the demo, use code: 123456
-                  </p>
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Verifying</>
-                  ) : (
-                    'Verify'
-                  )}
-                </Button>
-                <Button 
-                  type="button"
-                  variant="link" 
-                  className="w-full"
-                  onClick={() => setStep('phone')}
-                >
-                  Change Phone Number
                 </Button>
               </div>
             </form>
@@ -193,6 +137,14 @@ const Signup = () => {
                   ) : (
                     'Continue'
                   )}
+                </Button>
+                <Button 
+                  type="button"
+                  variant="link" 
+                  className="w-full"
+                  onClick={() => setStep('credentials')}
+                >
+                  Back
                 </Button>
               </div>
             </form>

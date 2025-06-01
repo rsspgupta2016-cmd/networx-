@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useConnection, Connection, CodeSettings } from '@/contexts/ConnectionContext';
+import { useConnection } from '@/contexts/ConnectionContext';
 import { useChat } from '@/contexts/ChatContext';
+import { Connection, CodeSettings } from '@/types/connection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,14 +54,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from '@/hooks/use-toast';
-
-// Extend Connection interface to include isIndustry property
-declare module '@/contexts/ConnectionContext' {
-  interface Connection {
-    isIndustry?: boolean;
-    identityCode?: string;
-  }
-}
 
 // Chat section types
 enum ChatSection {
@@ -121,8 +114,8 @@ const Home = () => {
     }
   }, [user, currentCode]);
 
-  const handleGenerateCode = () => {
-    const code = generateConnectionCode();
+  const handleGenerateCode = async () => {
+    const code = await generateConnectionCode();
     setConnectionCode(code);
   };
 
@@ -192,7 +185,7 @@ const Home = () => {
   // Count unread messages for a connection
   const getUnreadCount = (connectionId: string) => {
     const messages = getMessagesForConnection(connectionId);
-    return messages.filter(m => !m.isRead && m.senderId !== user?.id).length;
+    return messages.filter(m => !m.is_read && m.sender_id !== user?.id).length;
   };
 
   const getInitials = (name: string) => {
@@ -224,9 +217,9 @@ const Home = () => {
   // Filter connections based on active section
   const filteredConnections = connections.filter(connection => {
     if (activeSection === ChatSection.PERSONAL) {
-      return !connection.isIndustry;
+      return !connection.is_industry;
     } else {
-      return connection.isIndustry;
+      return connection.is_industry;
     }
   });
 
@@ -381,7 +374,7 @@ const Home = () => {
               >
                 <div className="flex items-center flex-1">
                   <Avatar className="h-12 w-12 border border-[#232e48]">
-                    <AvatarImage src={connection.profileImage} />
+                    <AvatarImage src={connection.profile_image} />
                     <AvatarFallback className="bg-gradient-to-r from-networx-primary to-networx-secondary text-white">
                       {getInitials(connection.name)}
                     </AvatarFallback>
@@ -411,19 +404,19 @@ const Home = () => {
                         <>
                           <p className="font-medium text-networx-light">{connection.name}</p>
                           <span className="ml-2 text-xs text-networx-light/50">
-                            {connection.identityCode}
+                            {connection.identity_code}
                           </span>
-                          {connection.muted && (
+                          {connection.is_muted && (
                             <BellOff size={14} className="ml-1 text-gray-500" />
                           )}
-                          {connection.callsMuted && (
+                          {connection.calls_muted && (
                             <VolumeX size={14} className="ml-1 text-gray-500" />
                           )}
                         </>
                       )}
                     </div>
                     {editingConnection !== connection.id && (
-                      <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
+                      <p className={`text-sm ${connection.is_muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
                         {connection.lastMessage?.content}
                       </p>
                     )}
@@ -473,7 +466,7 @@ const Home = () => {
                           className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                         >
                           <BellOff className="mr-2 h-4 w-4" />
-                          {connection.muted ? 'Unmute messages' : 'Mute messages'}
+                          {connection.is_muted ? 'Unmute messages' : 'Mute messages'}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={(e) => {
@@ -482,7 +475,7 @@ const Home = () => {
                           }} 
                           className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                         >
-                          {connection.callsMuted ? (
+                          {connection.calls_muted ? (
                             <>
                               <Volume className="mr-2 h-4 w-4" />
                               Unmute calls
@@ -780,7 +773,7 @@ const Home = () => {
               >
                 <div className="flex items-center flex-1">
                   <Avatar className="h-12 w-12 border border-[#232e48]">
-                    <AvatarImage src={connection.profileImage} />
+                    <AvatarImage src={connection.profile_image} />
                     <AvatarFallback className="bg-gradient-to-r from-networx-primary to-networx-secondary text-white">
                       {getInitials(connection.name)}
                     </AvatarFallback>
@@ -810,19 +803,19 @@ const Home = () => {
                         <>
                           <p className="font-medium text-networx-light">{connection.name}</p>
                           <span className="ml-2 text-xs text-networx-light/50">
-                            {connection.identityCode}
+                            {connection.identity_code}
                           </span>
-                          {connection.muted && (
+                          {connection.is_muted && (
                             <BellOff size={14} className="ml-1 text-gray-500" />
                           )}
-                          {connection.callsMuted && (
+                          {connection.calls_muted && (
                             <VolumeX size={14} className="ml-1 text-gray-500" />
                           )}
                         </>
                       )}
                     </div>
                     {editingConnection !== connection.id && (
-                      <p className={`text-sm ${connection.muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
+                      <p className={`text-sm ${connection.is_muted ? 'text-gray-500' : 'text-networx-light/70'} truncate`}>
                         {connection.lastMessage?.content}
                       </p>
                     )}
@@ -872,7 +865,7 @@ const Home = () => {
                           className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                         >
                           <BellOff className="mr-2 h-4 w-4" />
-                          {connection.muted ? 'Unmute messages' : 'Mute messages'}
+                          {connection.is_muted ? 'Unmute messages' : 'Mute messages'}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={(e) => {
@@ -881,7 +874,7 @@ const Home = () => {
                           }} 
                           className="flex items-center hover:bg-[#1C2A41] cursor-pointer"
                         >
-                          {connection.callsMuted ? (
+                          {connection.calls_muted ? (
                             <>
                               <Volume className="mr-2 h-4 w-4" />
                               Unmute calls

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
-import { Connection } from '@/contexts/ConnectionContext';
+import { Connection } from '@/types/connection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -104,19 +104,19 @@ const ChatView = ({ connection }: ChatViewProps) => {
         )}
         <div className="flex items-center">
           <Avatar className="h-10 w-10 border-2 border-networx-primary">
-            <AvatarImage src={connection.profileImage} />
+            <AvatarImage src={connection.profile_image} />
             <AvatarFallback className="bg-[#1C2A41] text-networx-primary">{getInitials(connection.name)}</AvatarFallback>
           </Avatar>
           <div className="ml-3">
             <div className="flex items-center">
               <h2 className="font-semibold">{connection.name}</h2>
               <div className="flex ml-2">
-                {connection.muted && (
+                {connection.is_muted && (
                   <div className="bg-networx-primary rounded-full p-0.5 mr-1" title="Messages muted">
                     <BellOff className="h-3 w-3" />
                   </div>
                 )}
-                {connection.callsMuted && (
+                {connection.calls_muted && (
                   <div className="bg-networx-primary rounded-full p-0.5" title="Calls muted">
                     <VolumeX className="h-3 w-3" />
                   </div>
@@ -142,8 +142,8 @@ const ChatView = ({ connection }: ChatViewProps) => {
           </div>
         ) : (
           messages.map((message, index) => {
-            const isOwnMessage = message.senderId === user?.id;
-            const messageDate = new Date(message.timestamp);
+            const isOwnMessage = message.sender_id === user?.id;
+            const messageDate = new Date(message.created_at);
             const messageDateStr = messageDate.toDateString();
             const showDateSeparator = messageDateStr !== lastMessageDate;
             
@@ -183,7 +183,7 @@ const ChatView = ({ connection }: ChatViewProps) => {
                         isOwnMessage ? 'justify-end text-green-600' : 'text-green-500'
                       }`}
                     >
-                      {formatTime(message.timestamp)}
+                      {formatTime(message.created_at)}
                     </div>
                   </div>
                 </div>
