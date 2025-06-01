@@ -5,27 +5,54 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Loader } from 'lucide-react';
 import InterestsSelector from '@/components/InterestsSelector';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { signupWithOTP, verifyOTP, signup } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
-  const [step, setStep] = useState<'credentials' | 'profile' | 'interests'>('credentials');
+  const [step, setStep] = useState<'phone' | 'otp' | 'profile' | 'interests'>('phone');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!phoneNumber) {
       return;
     }
     
-    setStep('profile');
+    try {
+      setIsSubmitting(true);
+      await signupWithOTP(phoneNumber);
+      setStep('otp');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!otp || otp.length !== 6) {
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      await verifyOTP(phoneNumber, otp);
+      setStep('profile');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -42,7 +69,7 @@ const Signup = () => {
     try {
       setIsSubmitting(true);
       setInterests(selectedInterests);
-      await signup(email, password, displayName, selectedInterests);
+      await signup(phoneNumber, '', displayName, selectedInterests);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -54,7 +81,7 @@ const Signup = () => {
   const handleSkipInterests = async () => {
     try {
       setIsSubmitting(true);
-      await signup(email, password, displayName, []);
+      await signup(phoneNumber, '', displayName, []);
       navigate('/home');
     } catch (error) {
       console.error(error);
@@ -63,40 +90,39 @@ const Signup = () => {
     }
   };
 
+  const handleBackToPhone = () => {
+    setStep('phone');
+    setOtp('');
+  };
+
+  const handleBackToProfile = () => {
+    setStep('profile');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-[350px]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">NetworX</CardTitle>
           <CardDescription>
-            {step === 'credentials' && 'Create a new account'}
+            {step === 'phone' && 'Create a new account'}
+            {step === 'otp' && 'Verify your mobile number'}
             {step === 'profile' && 'Set up your profile'}
             {step === 'interests' && 'Almost done!'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'credentials' && (
-            <form onSubmit={handleCredentialsSubmit}>
+          {step === 'phone' && (
+            <form onSubmit={handlePhoneSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="phone"
+                    type="tel"
+                    placeholder="Enter your mobile number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
                   />
                 </div>
                 <Button 
@@ -105,10 +131,57 @@ const Signup = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Please wait</>
+                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Sending OTP</>
                   ) : (
-                    'Continue'
+                    'Send OTP'
                   )}
+                </Button>
+              </div>
+            </form>
+          )}
+          
+          {step === 'otp' && (
+            <form onSubmit={handleOTPSubmit}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground text-center">
+                    We sent a verification code to {phoneNumber}
+                  </p>
+                  <div className="flex justify-center">
+                    <InputOTP
+                      maxLength={6}
+                      value={otp}
+                      onChange={setOtp}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isSubmitting || otp.length !== 6}
+                >
+                  {isSubmitting ? (
+                    <><Loader className="mr-2 h-4 w-4 animate-spin" /> Verifying</>
+                  ) : (
+                    'Verify OTP'
+                  )}
+                </Button>
+                <Button 
+                  type="button"
+                  variant="link" 
+                  className="w-full"
+                  onClick={handleBackToPhone}
+                >
+                  Back to phone number
                 </Button>
               </div>
             </form>
@@ -142,7 +215,7 @@ const Signup = () => {
                   type="button"
                   variant="link" 
                   className="w-full"
-                  onClick={() => setStep('credentials')}
+                  onClick={handleBackToProfile}
                 >
                   Back
                 </Button>

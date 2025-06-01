@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js';
 
 type AuthUser = {
   id: string;
-  email: string;
+  phone: string;
   displayName: string;
   profileImage?: string;
   identityCode?: string;
@@ -16,10 +16,12 @@ type AuthUser = {
 type AuthContextType = {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName: string, interests: string[]) => Promise<void>;
+  loginWithOTP: (phone: string) => Promise<void>;
+  signupWithOTP: (phone: string) => Promise<void>;
+  verifyOTP: (phone: string, token: string) => Promise<void>;
+  signup: (phone: string, password: string, displayName: string, interests: string[]) => Promise<void>;
   logout: () => void;
-  updateUserProfile: (updates: Partial<Omit<AuthUser, 'id' | 'email' | 'identityCode'>>) => Promise<void>;
+  updateUserProfile: (updates: Partial<Omit<AuthUser, 'id' | 'phone' | 'identityCode'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,8 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser({
         id: authUser.id,
-        email: authUser.email || '',
-        displayName: profile?.full_name || authUser.email || '',
+        phone: authUser.phone || '',
+        displayName: profile?.full_name || authUser.phone || '',
         profileImage: profile?.avatar_url,
         identityCode: `NX-${authUser.id.slice(0, 8).toUpperCase()}`,
         interests: [],
@@ -83,24 +85,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const loginWithOTP = async (phone: string) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
       });
 
       if (error) throw error;
 
       toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
+        title: "OTP sent",
+        description: "Please check your phone for the verification code.",
       });
     } catch (error: any) {
       toast({
-        title: "Login failed",
+        title: "Failed to send OTP",
         description: error.message || "Something went wrong",
         variant: "destructive",
       });
@@ -110,17 +111,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signup = async (email: string, password: string, displayName: string, interests: string[] = []) => {
+  const signupWithOTP = async (phone: string) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: displayName,
-          }
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "OTP sent",
+        description: "Please check your phone for the verification code.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to send OTP",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOTP = async (phone: string, token: string) => {
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: 'sms',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Phone verified",
+        description: "Your phone number has been verified successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Verification failed",
+        description: error.message || "Invalid verification code",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signup = async (phone: string, password: string, displayName: string, interests: string[] = []) => {
+    try {
+      setIsLoading(true);
+      
+      // Update the user's profile with the display name
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: displayName,
         }
       });
 
@@ -128,7 +180,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       toast({
         title: "Account created!",
-        description: "Please check your email to verify your account.",
+        description: "Welcome to NetworX!",
       });
     } catch (error: any) {
       toast({
@@ -142,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const updateUserProfile = async (updates: Partial<Omit<AuthUser, 'id' | 'email' | 'identityCode'>>) => {
+  const updateUserProfile = async (updates: Partial<Omit<AuthUser, 'id' | 'phone' | 'identityCode'>>) => {
     if (!user) return;
     
     try {
@@ -198,7 +250,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     user,
     isLoading,
-    login,
+    loginWithOTP,
+    signupWithOTP,
+    verifyOTP,
     signup,
     logout,
     updateUserProfile,
