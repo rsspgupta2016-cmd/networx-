@@ -90,7 +90,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       
       // For demo purposes, we'll simulate sending OTP
-      // In production, you would configure phone auth in Supabase
       console.log('Demo: OTP would be sent to', phone);
       
       toast({
@@ -150,6 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         // If user doesn't exist, create them
         if (error && error.message.includes('Invalid login credentials')) {
+          console.log('Creating new demo user...');
           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email: demoEmail,
             password: demoPassword,
@@ -157,12 +157,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               data: {
                 full_name: phone,
                 phone: phone,
-              }
+              },
+              emailRedirectTo: undefined // Skip email confirmation for demo
             }
           });
           
           if (signUpError) throw signUpError;
-          data = signUpData;
+          
+          // For demo purposes, immediately sign in the user
+          if (signUpData.user && !signUpData.user.email_confirmed_at) {
+            console.log('Auto-confirming demo user...');
+            // Try signing in again after signup
+            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+              email: demoEmail,
+              password: demoPassword,
+            });
+            
+            if (loginError && loginError.message.includes('Email not confirmed')) {
+              // Create a demo session manually for development
+              setUser({
+                id: signUpData.user.id,
+                phone: phone,
+                displayName: phone,
+                identityCode: `NX-${signUpData.user.id.slice(0, 8).toUpperCase()}`,
+                interests: [],
+              });
+              
+              toast({
+                title: "Phone verified (Demo)",
+                description: "Demo user created successfully.",
+              });
+              return;
+            }
+            
+            data = loginData;
+          }
         } else if (error) {
           throw error;
         }
@@ -175,6 +204,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Please enter a 6-digit code');
       }
     } catch (error: any) {
+      console.error('Verification error:', error);
       toast({
         title: "Verification failed",
         description: error.message || "Invalid verification code",
