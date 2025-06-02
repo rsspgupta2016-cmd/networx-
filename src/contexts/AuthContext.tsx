@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -41,6 +40,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check for demo user in localStorage first
+    const demoUser = localStorage.getItem('demoUser');
+    if (demoUser) {
+      try {
+        const parsedUser = JSON.parse(demoUser);
+        setUser(parsedUser);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        localStorage.removeItem('demoUser');
+      }
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -55,7 +67,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session?.user) {
           await loadUserProfile(session.user);
         } else {
-          setUser(null);
+          // Check for demo user when session is null
+          const demoUser = localStorage.getItem('demoUser');
+          if (demoUser) {
+            try {
+              const parsedUser = JSON.parse(demoUser);
+              setUser(parsedUser);
+            } catch (error) {
+              setUser(null);
+              localStorage.removeItem('demoUser');
+            }
+          } else {
+            setUser(null);
+          }
         }
         setIsLoading(false);
       }
@@ -85,6 +109,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
+  };
+
+  const createDemoUser = (identifier: string) => {
+    const demoUser = {
+      id: `demo-${Date.now()}`,
+      phone: identifier,
+      displayName: identifier,
+      identityCode: `NX-DEMO${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+      interests: [],
+    };
+    
+    // Store demo user in localStorage for persistence
+    localStorage.setItem('demoUser', JSON.stringify(demoUser));
+    setUser(demoUser);
+    return demoUser;
   };
 
   const loginWithOTP = async (phone: string) => {
@@ -191,58 +230,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (type === 'phone') {
         // Demo OTP verification for phone
         if (token.length === 6) {
-          const demoEmail = `${identifier.replace(/\D/g, '')}@demo.netwox.com`;
-          const demoPassword = 'demo123456';
-          
-          console.log('Attempting demo signup for phone:', identifier);
-          
-          // Try to sign up the demo user
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: demoEmail,
-            password: demoPassword,
-            options: {
-              data: {
-                full_name: identifier,
-                phone: identifier,
-              },
-              emailRedirectTo: undefined
-            }
-          });
-          
-          if (signUpError && !signUpError.message.includes('already registered')) {
-            throw signUpError;
-          }
-          
-          // If user already exists or was just created, try to sign in
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: demoEmail,
-            password: demoPassword,
-          });
-          
-          if (loginError && loginError.message.includes('Email not confirmed')) {
-            // For demo purposes, create a temporary user state
-            const tempUserId = signUpData?.user?.id || 'demo-' + Date.now();
-            setUser({
-              id: tempUserId,
-              phone: identifier,
-              displayName: identifier,
-              identityCode: `NX-${tempUserId.slice(0, 8).toUpperCase()}`,
-              interests: [],
-            });
-            
-            toast({
-              title: "Phone verified (Demo)",
-              description: "Demo user created successfully.",
-            });
-            return;
-          } else if (loginError) {
-            throw loginError;
-          }
+          const demoUser = createDemoUser(identifier);
           
           toast({
             title: "Phone verified (Demo)",
             description: "Your phone number has been verified successfully.",
           });
+          return;
         } else {
           throw new Error('Please enter a 6-digit code');
         }
@@ -286,6 +280,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           interests
         };
         setUser(updatedUser);
+        localStorage.setItem('demoUser', JSON.stringify(updatedUser));
       }
 
       toast({
@@ -340,6 +335,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      // Clear demo user from localStorage
+      localStorage.removeItem('demoUser');
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
