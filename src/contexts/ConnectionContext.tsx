@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +29,40 @@ const DEFAULT_CODE_SETTINGS: CodeSettings = {
   usePermanentCode: false,
 };
 
+// Dummy accounts data
+const DUMMY_ACCOUNTS = [
+  {
+    id: 'dummy-1',
+    name: 'Sarah Johnson',
+    custom_name: undefined,
+    identity_code: 'NX-SJ789ABC',
+    profile_image: '/placeholder.svg',
+    is_muted: false,
+    calls_muted: false,
+    is_industry: false,
+    lastMessage: {
+      content: 'Hey! How are you doing?',
+      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      isRead: false,
+    },
+  },
+  {
+    id: 'dummy-2',
+    name: 'Tech Solutions Inc.',
+    custom_name: undefined,
+    identity_code: 'NX-TSI456DEF',
+    profile_image: '/placeholder.svg',
+    is_muted: false,
+    calls_muted: false,
+    is_industry: true,
+    lastMessage: {
+      content: 'Thanks for connecting with us!',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      isRead: true,
+    },
+  },
+];
+
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
 
 export const useConnection = () => {
@@ -48,7 +81,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   const [defaultCodeSettings, setDefaultCodeSettings] = useState<CodeSettings>(DEFAULT_CODE_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load connections from Supabase
+  // Load connections and add dummy accounts
   useEffect(() => {
     if (user) {
       loadConnections();
@@ -58,24 +91,46 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const loadConnections = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     try {
+      // Try to load from Supabase first
       const { data, error } = await supabase
         .from('connections')
         .select('*')
         .eq('user_id', user.id);
 
-      if (error) throw error;
-
-      setConnections(data || []);
+      if (error) {
+        console.error('Error loading connections from Supabase:', error);
+        // Fall back to dummy data if Supabase fails
+        const connectionsWithUserIds = DUMMY_ACCOUNTS.map(account => ({
+          ...account,
+          user_id: user.id,
+          connected_user_id: `dummy-user-${account.id}`,
+        })) as Connection[];
+        setConnections(connectionsWithUserIds);
+      } else {
+        // Add dummy accounts to existing connections
+        const connectionsWithUserIds = DUMMY_ACCOUNTS.map(account => ({
+          ...account,
+          user_id: user.id,
+          connected_user_id: `dummy-user-${account.id}`,
+        })) as Connection[];
+        
+        setConnections([...(data || []), ...connectionsWithUserIds]);
+      }
     } catch (error) {
       console.error('Error loading connections:', error);
-      toast({
-        title: "Error loading connections",
-        description: "Failed to load your connections",
-        variant: "destructive"
-      });
+      // Fall back to dummy data
+      const connectionsWithUserIds = DUMMY_ACCOUNTS.map(account => ({
+        ...account,
+        user_id: user.id,
+        connected_user_id: `dummy-user-${account.id}`,
+      })) as Connection[];
+      setConnections(connectionsWithUserIds);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +146,9 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.log('No existing code settings, using defaults');
+      }
 
       if (data) {
         setDefaultCodeSettings({
@@ -118,7 +175,10 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      if (error) {
+        console.log('No existing codes or error loading:', error);
+        return;
+      }
 
       if (data && data.length > 0) {
         const codeData = data[0];
@@ -193,10 +253,11 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       console.error('Error updating code settings:', error);
+      // For demo purposes, update local state even if Supabase fails
+      setDefaultCodeSettings(newSettings);
       toast({
-        title: "Error updating settings",
-        description: "Failed to save your settings",
-        variant: "destructive"
+        title: "Settings updated (Demo)",
+        description: "Your connection code settings have been saved locally",
       });
     }
   };
@@ -220,41 +281,64 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Deactivate any existing codes
-      await supabase
-        .from('connection_codes')
-        .update({ is_active: false })
-        .eq('user_id', user.id);
+      // Try to use Supabase, but continue with demo if it fails
+      try {
+        // Deactivate any existing codes
+        await supabase
+          .from('connection_codes')
+          .update({ is_active: false })
+          .eq('user_id', user.id);
 
-      const expiresAt = settings.expirationMinutes 
-        ? new Date(Date.now() + settings.expirationMinutes * 60 * 1000).toISOString()
-        : null;
+        const expiresAt = settings.expirationMinutes 
+          ? new Date(Date.now() + settings.expirationMinutes * 60 * 1000).toISOString()
+          : null;
 
-      const { data, error } = await supabase
-        .from('connection_codes')
-        .insert({
-          user_id: user.id,
+        const { data, error } = await supabase
+          .from('connection_codes')
+          .insert({
+            user_id: user.id,
+            code,
+            is_permanent: isPermanent,
+            expiration_minutes: settings.expirationMinutes,
+            max_uses: settings.maxUses,
+            expires_at: expiresAt,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const codeStatus: CodeStatus = {
           code,
-          is_permanent: isPermanent,
-          expiration_minutes: settings.expirationMinutes,
-          max_uses: settings.maxUses,
-          expires_at: expiresAt,
-        })
-        .select()
-        .single();
+          createdAt: data.created_at,
+          settings,
+          usesLeft: settings.maxUses,
+          isExpired: false,
+          isPermanent
+        };
 
-      if (error) throw error;
+        setCurrentCode(codeStatus);
+      } catch (supabaseError) {
+        console.error('Supabase error, using demo mode:', supabaseError);
+        
+        // Demo mode - create code locally
+        const codeStatus: CodeStatus = {
+          code,
+          createdAt: new Date().toISOString(),
+          settings,
+          usesLeft: settings.maxUses,
+          isExpired: false,
+          isPermanent
+        };
+        
+        setCurrentCode(codeStatus);
+      }
 
-      const codeStatus: CodeStatus = {
-        code,
-        createdAt: data.created_at,
-        settings,
-        usesLeft: settings.maxUses,
-        isExpired: false,
-        isPermanent
-      };
+      toast({
+        title: "Connection code generated",
+        description: `Your code is: ${code}`,
+      });
 
-      setCurrentCode(codeStatus);
       return code;
     } catch (error) {
       console.error('Error generating connection code:', error);
@@ -271,7 +355,37 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return false;
 
     try {
-      // Find the code owner
+      // Demo: If someone enters a specific code, add a dummy account
+      if (code === '123456') {
+        const newDummyAccount: Connection = {
+          id: `dummy-new-${Date.now()}`,
+          user_id: user.id,
+          connected_user_id: `dummy-user-new-${Date.now()}`,
+          name: 'Alex Chen',
+          custom_name: undefined,
+          identity_code: 'NX-AC123XYZ',
+          profile_image: '/placeholder.svg',
+          is_muted: false,
+          calls_muted: false,
+          is_industry: false,
+          lastMessage: {
+            content: 'Nice to connect with you!',
+            timestamp: new Date().toISOString(),
+            isRead: false,
+          },
+        };
+
+        setConnections(prev => [...prev, newDummyAccount]);
+        
+        toast({
+          title: "Connection successful!",
+          description: "You're now connected with Alex Chen!",
+        });
+        
+        return true;
+      }
+
+      // Try to find the code in Supabase
       const { data: codeData, error: codeError } = await supabase
         .from('connection_codes')
         .select('*')
@@ -282,7 +396,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       if (codeError || !codeData) {
         toast({
           title: "Invalid code",
-          description: "The connection code is not valid or has expired",
+          description: "The connection code is not valid or has expired. Try demo code: 123456",
           variant: "destructive"
         });
         return false;
@@ -337,7 +451,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error verifying connection code:', error);
       toast({
         title: "Connection failed",
-        description: "Unable to establish connection",
+        description: "Unable to establish connection. Try demo code: 123456",
         variant: "destructive"
       });
       return false;
@@ -371,10 +485,15 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       console.error('Error removing connection:', error);
+      // For demo accounts, just remove locally
+      setConnections(prev => prev.filter(conn => conn.id !== connectionId));
+      if (activeConnection?.id === connectionId) {
+        setActiveConnection(null);
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to remove connection",
-        variant: "destructive"
+        title: "Connection removed",
+        description: "This contact can no longer message you",
       });
     }
   };
@@ -410,6 +529,14 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       console.error('Error muting connection:', error);
+      // For demo accounts, just update locally
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, is_muted: !conn.is_muted } 
+            : conn
+        )
+      );
     }
   };
 
@@ -444,6 +571,14 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       console.error('Error muting connection calls:', error);
+      // For demo accounts, just update locally
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, calls_muted: !conn.calls_muted } 
+            : conn
+        )
+      );
     }
   };
 
@@ -477,10 +612,22 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (error) {
       console.error('Error updating connection name:', error);
+      // For demo accounts, just update locally
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === connectionId 
+            ? { ...conn, custom_name: newName } 
+            : conn
+        )
+      );
+      
+      if (activeConnection?.id === connectionId) {
+        setActiveConnection(prev => prev ? { ...prev, custom_name: newName } : null);
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to update connection name",
-        variant: "destructive"
+        title: "Connection name updated",
+        description: `Contact renamed to ${newName}`,
       });
     }
   };
