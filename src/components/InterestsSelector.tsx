@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Check, Loader } from 'lucide-react';
 import { interestCategories } from '@/pages/Discovery';
 
 interface InterestsSelectorProps {
@@ -18,6 +18,7 @@ const InterestsSelector = ({
   showSkip = true 
 }: InterestsSelectorProps) => {
   const [interests, setInterests] = useState<string[]>(selectedInterests || []);
+  const [isLoading, setIsLoading] = useState(false);
   
   const toggleInterest = (interestId: string) => {
     if (interests.includes(interestId)) {
@@ -27,8 +28,24 @@ const InterestsSelector = ({
     }
   };
   
-  const handleSave = () => {
-    onChange(interests);
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      await onChange(interests);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSkip = async () => {
+    if (onSkip) {
+      setIsLoading(true);
+      try {
+        await onSkip();
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
   
   return (
@@ -67,16 +84,20 @@ const InterestsSelector = ({
         {showSkip && onSkip && (
           <Button 
             variant="ghost" 
-            onClick={onSkip}
+            onClick={handleSkip}
             className="text-gray-500"
+            disabled={isLoading}
           >
+            {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
             Skip
           </Button>
         )}
         <Button 
           onClick={handleSave}
           className={showSkip ? "ml-auto" : "w-full"}
+          disabled={isLoading}
         >
+          {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
           Save Interests
         </Button>
       </div>

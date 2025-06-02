@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -193,54 +194,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const demoEmail = `${identifier.replace(/\D/g, '')}@demo.netwox.com`;
           const demoPassword = 'demo123456';
           
-          let { data, error } = await supabase.auth.signInWithPassword({
+          console.log('Attempting demo signup for phone:', identifier);
+          
+          // Try to sign up the demo user
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: demoEmail,
+            password: demoPassword,
+            options: {
+              data: {
+                full_name: identifier,
+                phone: identifier,
+              },
+              emailRedirectTo: undefined
+            }
+          });
+          
+          if (signUpError && !signUpError.message.includes('already registered')) {
+            throw signUpError;
+          }
+          
+          // If user already exists or was just created, try to sign in
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
             email: demoEmail,
             password: demoPassword,
           });
           
-          if (error && error.message.includes('Invalid login credentials')) {
-            console.log('Creating new demo user...');
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: demoEmail,
-              password: demoPassword,
-              options: {
-                data: {
-                  full_name: identifier,
-                  phone: identifier,
-                },
-                emailRedirectTo: undefined
-              }
+          if (loginError && loginError.message.includes('Email not confirmed')) {
+            // For demo purposes, create a temporary user state
+            const tempUserId = signUpData?.user?.id || 'demo-' + Date.now();
+            setUser({
+              id: tempUserId,
+              phone: identifier,
+              displayName: identifier,
+              identityCode: `NX-${tempUserId.slice(0, 8).toUpperCase()}`,
+              interests: [],
             });
             
-            if (signUpError) throw signUpError;
-            
-            if (signUpData.user && !signUpData.user.email_confirmed_at) {
-              console.log('Auto-confirming demo user...');
-              const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-                email: demoEmail,
-                password: demoPassword,
-              });
-              
-              if (loginError && loginError.message.includes('Email not confirmed')) {
-                setUser({
-                  id: signUpData.user.id,
-                  phone: identifier,
-                  displayName: identifier,
-                  identityCode: `NX-${signUpData.user.id.slice(0, 8).toUpperCase()}`,
-                  interests: [],
-                });
-                
-                toast({
-                  title: "Phone verified (Demo)",
-                  description: "Demo user created successfully.",
-                });
-                return;
-              }
-              
-              data = loginData;
-            }
-          } else if (error) {
-            throw error;
+            toast({
+              title: "Phone verified (Demo)",
+              description: "Demo user created successfully.",
+            });
+            return;
+          } else if (loginError) {
+            throw loginError;
           }
           
           toast({
@@ -282,14 +278,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          full_name: displayName,
-          phone: phone,
-        }
-      });
-
-      if (error) throw error;
+      // Update the current user with display name and interests
+      if (user) {
+        const updatedUser = {
+          ...user,
+          displayName,
+          interests
+        };
+        setUser(updatedUser);
+      }
 
       toast({
         title: "Account created!",
