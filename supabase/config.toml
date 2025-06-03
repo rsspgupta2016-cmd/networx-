@@ -1,1 +1,17 @@
+
 project_id = "owpnedmbicblvegtfkod"
+
+[functions.send-sms-verification]
+verify_jwt = false
+
+[functions.verify-phone-code]
+verify_jwt = false
+
+[functions.send-email-notification]
+verify_jwt = false
+
+[functions.generate-connection-code]
+verify_jwt = true
+
+[functions.validate-connection-code]
+verify_jwt = true
