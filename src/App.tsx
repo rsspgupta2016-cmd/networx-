@@ -11,14 +11,14 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { useIsMobile } from "./hooks/use-mobile";
 
 // Pages
-import Login from "./pages/Login";
+import ProductionAuth from "./pages/ProductionAuth";
 import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import AdminPanel from "./components/AdminPanel";
 import MobileLayout from "./components/MobileLayout";
-import Discovery from "./pages/Discovery"; // Import the Discovery page
+import Discovery from "./pages/Discovery";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +38,7 @@ const App = () => {
                   <MobileLayout>
                     <Routes>
                       {/* Auth Routes */}
-                      <Route path="/login" element={<Login />} />
+                      <Route path="/auth" element={<ProductionAuth />} />
                       <Route path="/signup" element={<Signup />} />
                       
                       {/* Protected Routes */}
@@ -80,8 +80,8 @@ const App = () => {
                         } 
                       />
                       
-                      {/* Redirect root to login or home */}
-                      <Route path="/" element={<Navigate to="/login" />} />
+                      {/* Redirect root to auth */}
+                      <Route path="/" element={<Navigate to="/auth" />} />
                       
                       {/* 404 Route */}
                       <Route path="*" element={<NotFound />} />
@@ -90,7 +90,7 @@ const App = () => {
                 ) : (
                   <Routes>
                     {/* Auth Routes */}
-                    <Route path="/login" element={<Login />} />
+                    <Route path="/auth" element={<ProductionAuth />} />
                     <Route path="/signup" element={<Signup />} />
                     
                     {/* Protected Routes */}
@@ -132,8 +132,8 @@ const App = () => {
                       } 
                     />
                     
-                    {/* Redirect root to login or home */}
-                    <Route path="/" element={<Navigate to="/login" />} />
+                    {/* Redirect root to auth */}
+                    <Route path="/" element={<Navigate to="/auth" />} />
                     
                     {/* 404 Route */}
                     <Route path="*" element={<NotFound />} />
