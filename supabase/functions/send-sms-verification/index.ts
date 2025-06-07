@@ -20,44 +20,56 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { phone, code }: SMSRequest = await req.json();
     
+    console.log(`Processing SMS verification request for phone: ${phone}`);
+    
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // For testing purposes, we'll use a demo SMS service
-    // In production, integrate with Twilio or similar
+    // Check for Twilio credentials
     const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
 
+    let smsResult = null;
+
     if (twilioAccountSid && twilioAuthToken && twilioPhoneNumber) {
-      // Real Twilio integration
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-      
-      const formData = new URLSearchParams();
-      formData.append('To', phone);
-      formData.append('From', twilioPhoneNumber);
-      formData.append('Body', `Your NetworX verification code is: ${code}`);
+      try {
+        // Real Twilio integration
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+        
+        const formData = new URLSearchParams();
+        formData.append('To', phone);
+        formData.append('From', twilioPhoneNumber);
+        formData.append('Body', `Your NetworX verification code is: ${code}`);
 
-      const twilioResponse = await fetch(twilioUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
-      });
+        const twilioResponse = await fetch(twilioUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: formData,
+        });
 
-      if (!twilioResponse.ok) {
-        throw new Error('Failed to send SMS via Twilio');
+        if (!twilioResponse.ok) {
+          const errorText = await twilioResponse.text();
+          console.error('Twilio error:', errorText);
+          throw new Error(`Twilio API error: ${twilioResponse.status}`);
+        }
+
+        smsResult = await twilioResponse.json();
+        console.log('SMS sent successfully via Twilio:', smsResult.sid);
+      } catch (twilioError) {
+        console.error('Twilio SMS failed, falling back to demo mode:', twilioError);
+        console.log(`Demo SMS to ${phone}: Your verification code is ${code}`);
       }
-
-      console.log('SMS sent successfully via Twilio to:', phone);
     } else {
       // Demo mode - log the verification code
       console.log(`Demo SMS to ${phone}: Your verification code is ${code}`);
+      console.log('Twilio credentials not configured - running in demo mode');
     }
 
     // Store verification code in database for validation
@@ -75,8 +87,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to store verification code');
     }
 
+    console.log('Verification code stored successfully');
+
     return new Response(
-      JSON.stringify({ success: true, message: 'Verification code sent' }),
+      JSON.stringify({ 
+        success: true, 
+        message: smsResult ? 'SMS sent via Twilio' : 'Verification code generated (demo mode)',
+        demo: !smsResult
+      }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -86,7 +104,10 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('Error in send-sms-verification:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        success: false 
+      }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },

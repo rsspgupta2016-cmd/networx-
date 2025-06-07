@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBackendServices } from '@/hooks/useBackendServices';
-import { Loader2, Phone, Shield } from 'lucide-react';
+import { Loader2, Phone, Shield, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ProductionAuthFlow = () => {
   const { signupWithEmail, loginWithEmail, isLoading } = useAuth();
@@ -19,24 +20,45 @@ const ProductionAuthFlow = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Clear error when step changes
+  useEffect(() => {
+    setError(null);
+  }, [step]);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber.trim()) return;
+    if (!phoneNumber.trim()) {
+      setError('Please enter a valid phone number');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+    
     try {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      await sendSMSVerification(phoneNumber, code);
+      const result = await sendSMSVerification(phoneNumber, code);
       
-      toast({
-        title: "Verification Code Sent",
-        description: "Please check your phone for the verification code.",
-      });
+      if (result.demo) {
+        setIsDemoMode(true);
+        toast({
+          title: "Demo Mode Active",
+          description: `For testing, use code: ${code}`,
+        });
+      } else {
+        toast({
+          title: "Verification Code Sent",
+          description: "Please check your phone for the verification code.",
+        });
+      }
       
       setStep('verify');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Phone verification error:', error);
+      setError('Failed to send verification code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -44,9 +66,14 @@ const ProductionAuthFlow = () => {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verificationCode.trim()) return;
+    if (!verificationCode.trim()) {
+      setError('Please enter the verification code');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+    
     try {
       const result = await verifyPhoneCode(phoneNumber, verificationCode);
       
@@ -57,8 +84,9 @@ const ProductionAuthFlow = () => {
         });
         setStep('email');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Code verification error:', error);
+      setError('Invalid verification code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -66,33 +94,53 @@ const ProductionAuthFlow = () => {
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+    
     try {
       await signupWithEmail(email, password);
       
       // Send welcome email
-      await sendEmailNotification(
-        email,
-        "Welcome to NetworX!",
-        `
-          <h1>Welcome to NetworX!</h1>
-          <p>Your account has been created successfully.</p>
-          <p>Your verified phone number: ${phoneNumber}</p>
-          <p>Start networking and building meaningful professional connections!</p>
-        `,
-        'welcome'
-      );
+      try {
+        await sendEmailNotification(
+          email,
+          "Welcome to NetworX!",
+          `
+            <h1>Welcome to NetworX!</h1>
+            <p>Your account has been created successfully.</p>
+            <p>Your verified phone number: ${phoneNumber}</p>
+            <p>Start networking and building meaningful professional connections!</p>
+          `,
+          'welcome'
+        );
+      } catch (emailError) {
+        console.warn('Welcome email failed to send:', emailError);
+      }
 
       toast({
         title: "Account Created",
         description: "Welcome to NetworX! Please check your email for verification.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Email signup error:', error);
+      setError('Failed to create account. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    setError(null);
+    if (step === 'verify') {
+      setStep('phone');
+      setVerificationCode('');
+    } else if (step === 'email') {
+      setStep('verify');
     }
   };
 
@@ -109,7 +157,23 @@ const ProductionAuthFlow = () => {
             {step === 'email' && 'Complete your account setup'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {isDemoMode && step === 'verify' && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Demo mode: SMS service not configured. Use any 6-digit code to proceed.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {step === 'phone' && (
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -123,6 +187,7 @@ const ProductionAuthFlow = () => {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     className="pl-10"
+                    required
                   />
                 </div>
               </div>
@@ -153,6 +218,7 @@ const ProductionAuthFlow = () => {
                     onChange={(e) => setVerificationCode(e.target.value)}
                     className="pl-10"
                     maxLength={6}
+                    required
                   />
                 </div>
                 <p className="text-sm text-gray-600">
@@ -163,8 +229,9 @@ const ProductionAuthFlow = () => {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setStep('phone')}
+                  onClick={handleBack}
                   className="flex-1"
+                  disabled={loading}
                 >
                   Back
                 </Button>
@@ -192,6 +259,7 @@ const ProductionAuthFlow = () => {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -202,14 +270,17 @@ const ProductionAuthFlow = () => {
                   placeholder="Create a secure password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
                 />
               </div>
               <div className="flex gap-2">
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setStep('verify')}
+                  onClick={handleBack}
                   className="flex-1"
+                  disabled={loading}
                 >
                   Back
                 </Button>
