@@ -97,7 +97,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      // Try to load from Supabase first
+      console.log('Loading connections for user:', user.id);
+      
       const { data, error } = await supabase
         .from('connections')
         .select('*')
@@ -113,6 +114,7 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         })) as Connection[];
         setConnections(connectionsWithUserIds);
       } else {
+        console.log('Loaded connections:', data?.length || 0);
         // Add dummy accounts to existing connections
         const connectionsWithUserIds = DUMMY_ACCOUNTS.map(account => ({
           ...account,
@@ -281,73 +283,65 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Try to use Supabase, but continue with demo if it fails
-      try {
-        // Deactivate any existing codes
-        await supabase
-          .from('connection_codes')
-          .update({ is_active: false })
-          .eq('user_id', user.id);
-
-        const expiresAt = settings.expirationMinutes 
-          ? new Date(Date.now() + settings.expirationMinutes * 60 * 1000).toISOString()
-          : null;
-
-        const { data, error } = await supabase
-          .from('connection_codes')
-          .insert({
-            user_id: user.id,
-            code,
-            is_permanent: isPermanent,
-            expiration_minutes: settings.expirationMinutes,
-            max_uses: settings.maxUses,
-            expires_at: expiresAt,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        const codeStatus: CodeStatus = {
-          code,
-          createdAt: data.created_at,
-          settings,
-          usesLeft: settings.maxUses,
-          isExpired: false,
+      console.log('Generating connection code with settings:', settings);
+      
+      // Use the edge function for authenticated users
+      const { data, error } = await supabase.functions.invoke('generate-connection-code', {
+        body: {
+          userId: user.id,
+          expirationMinutes: settings.expirationMinutes,
+          maxUses: settings.maxUses,
           isPermanent
-        };
+        }
+      });
 
-        setCurrentCode(codeStatus);
-      } catch (supabaseError) {
-        console.error('Supabase error, using demo mode:', supabaseError);
-        
-        // Demo mode - create code locally
-        const codeStatus: CodeStatus = {
-          code,
-          createdAt: new Date().toISOString(),
-          settings,
-          usesLeft: settings.maxUses,
-          isExpired: false,
-          isPermanent
-        };
-        
-        setCurrentCode(codeStatus);
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
       }
 
+      if (data?.connectionCode) {
+        const codeStatus: CodeStatus = {
+          code: data.connectionCode.code,
+          createdAt: new Date().toISOString(),
+          settings,
+          usesLeft: data.connectionCode.maxUses,
+          isExpired: false,
+          isPermanent: data.connectionCode.isPermanent
+        };
+
+        setCurrentCode(codeStatus);
+        
+        toast({
+          title: "Connection code generated",
+          description: `Your code is: ${data.connectionCode.code}`,
+        });
+
+        return data.connectionCode.code;
+      }
+      
+      throw new Error('No connection code returned');
+    } catch (error) {
+      console.error('Error generating connection code, falling back to demo mode:', error);
+      
+      // Demo mode fallback
+      const codeStatus: CodeStatus = {
+        code,
+        createdAt: new Date().toISOString(),
+        settings,
+        usesLeft: settings.maxUses,
+        isExpired: false,
+        isPermanent
+      };
+      
+      setCurrentCode(codeStatus);
+      
       toast({
-        title: "Connection code generated",
+        title: "Connection code generated (Demo)",
         description: `Your code is: ${code}`,
       });
 
       return code;
-    } catch (error) {
-      console.error('Error generating connection code:', error);
-      toast({
-        title: "Code generation failed",
-        description: "Unable to generate connection code",
-        variant: "destructive"
-      });
-      return '000000';
     }
   };
 
@@ -355,6 +349,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return false;
 
     try {
+      console.log('Verifying connection code:', code);
+      
       // Demo: If someone enters a specific code, add a dummy account
       if (code === '123456') {
         const newDummyAccount: Connection = {
@@ -385,68 +381,37 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
 
-      // Try to find the code in Supabase
-      const { data: codeData, error: codeError } = await supabase
-        .from('connection_codes')
-        .select('*')
-        .eq('code', code)
-        .eq('is_active', true)
-        .single();
-
-      if (codeError || !codeData) {
-        toast({
-          title: "Invalid code",
-          description: "The connection code is not valid or has expired. Try demo code: 123456",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Check if code is expired
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
-        toast({
-          title: "Code expired",
-          description: "This connection code has expired",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Create the connection
-      const { error: connectionError } = await supabase
-        .from('connections')
-        .insert({
-          user_id: user.id,
-          connected_user_id: codeData.user_id,
-          name: `User ${Math.floor(Math.random() * 100)}`,
-          identity_code: `NX-${Math.floor(10000 + Math.random() * 90000)}`,
-        });
-
-      if (connectionError) throw connectionError;
-
-      // Update code usage
-      if (codeData.max_uses) {
-        const newUses = codeData.current_uses + 1;
-        if (newUses >= codeData.max_uses) {
-          await supabase
-            .from('connection_codes')
-            .update({ is_active: false, current_uses: newUses })
-            .eq('id', codeData.id);
-        } else {
-          await supabase
-            .from('connection_codes')
-            .update({ current_uses: newUses })
-            .eq('id', codeData.id);
+      // Use the edge function for real code validation
+      const { data, error } = await supabase.functions.invoke('validate-connection-code', {
+        body: {
+          code,
+          requestingUserId: user.id
         }
-      }
-
-      await loadConnections();
-      toast({
-        title: "Connection successful!",
-        description: "You're now connected!",
       });
 
-      return true;
+      if (error) {
+        console.error('Edge function error:', error);
+        toast({
+          title: "Connection failed",
+          description: error.message || "Invalid connection code. Try demo code: 123456",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data?.success && data?.connection) {
+        // Reload connections to get the new one
+        await loadConnections();
+        
+        toast({
+          title: "Connection successful!",
+          description: `You're now connected with ${data.connection.name}!`,
+        });
+        
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Error verifying connection code:', error);
       toast({

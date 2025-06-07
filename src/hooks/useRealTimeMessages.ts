@@ -28,13 +28,20 @@ export const useRealTimeMessages = (connectionId: string | null) => {
 
     const loadMessages = async () => {
       try {
+        console.log('Loading messages for connection:', connectionId);
+        
         const { data, error } = await supabase
           .from('messages')
           .select('*')
           .eq('connection_id', connectionId)
           .order('created_at', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error loading messages:', error);
+          throw error;
+        }
+        
+        console.log('Loaded messages:', data?.length || 0);
         setMessages(data || []);
       } catch (error) {
         console.error('Error loading messages:', error);
@@ -55,8 +62,10 @@ export const useRealTimeMessages = (connectionId: string | null) => {
   useEffect(() => {
     if (!connectionId || !user) return;
 
+    console.log('Setting up real-time subscription for connection:', connectionId);
+
     const channel = supabase
-      .channel('messages-changes')
+      .channel(`messages-${connectionId}`)
       .on(
         'postgres_changes',
         {
@@ -66,8 +75,15 @@ export const useRealTimeMessages = (connectionId: string | null) => {
           filter: `connection_id=eq.${connectionId}`
         },
         (payload) => {
+          console.log('Received new message:', payload);
           const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(msg => msg.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
           
           // Show notification for messages from others
           if (newMessage.sender_id !== user.id) {
@@ -87,6 +103,7 @@ export const useRealTimeMessages = (connectionId: string | null) => {
           filter: `connection_id=eq.${connectionId}`
         },
         (payload) => {
+          console.log('Message updated:', payload);
           const updatedMessage = payload.new as Message;
           setMessages(prev => 
             prev.map(msg => 
@@ -95,9 +112,12 @@ export const useRealTimeMessages = (connectionId: string | null) => {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [connectionId, user]);
@@ -106,15 +126,23 @@ export const useRealTimeMessages = (connectionId: string | null) => {
     if (!connectionId || !user || !content.trim()) return;
 
     try {
+      console.log('Sending message:', content);
+      
       const { error } = await supabase
         .from('messages')
         .insert({
           content: content.trim(),
           sender_id: user.id,
           connection_id: connectionId,
+          is_read: false
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending message:', error);
+        throw error;
+      }
+      
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -130,9 +158,12 @@ export const useRealTimeMessages = (connectionId: string | null) => {
       const { error } = await supabase
         .from('messages')
         .update({ is_read: true })
-        .eq('id', messageId);
+        .eq('id', messageId)
+        .eq('sender_id', user?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking message as read:', error);
+      }
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
