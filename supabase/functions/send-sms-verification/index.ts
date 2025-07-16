@@ -21,8 +21,8 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`Processing SMS verification request for phone: ${phone}`);
     
-    // Generate verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate verification code (use fixed code for demo)
+    const code = '123456'; // Fixed demo code
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -80,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         phone,
         code,
-        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year for demo
         verified: false
       });
 

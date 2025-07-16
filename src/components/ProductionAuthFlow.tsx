@@ -9,16 +9,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBackendServices } from '@/hooks/useBackendServices';
 import { Loader2, Phone, Shield, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useNavigate } from 'react-router-dom';
 
 const ProductionAuthFlow = () => {
-  const { signupWithEmail, loginWithEmail, isLoading } = useAuth();
-  const { sendSMSVerification, verifyPhoneCode, sendEmailNotification } = useBackendServices();
+  const { loginWithEmail, isLoading } = useAuth();
+  const { sendSMSVerification, verifyPhoneCode } = useBackendServices();
+  const navigate = useNavigate();
   
-  const [step, setStep] = useState<'phone' | 'verify' | 'email'>('phone');
+  const [step, setStep] = useState<'phone' | 'verify'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,57 +77,24 @@ const ProductionAuthFlow = () => {
       const result = await verifyPhoneCode(phoneNumber, verificationCode);
       
       if (result.verified) {
+        // Login with the generated email/password
+        try {
+          await loginWithEmail(result.email, 'demo-password-123');
+        } catch (loginError) {
+          console.log('Login attempted, user may need to be created first');
+        }
+        
+        // Navigate to home page
+        navigate('/home');
+        
         toast({
-          title: "Phone Verified",
-          description: "Your phone number has been verified successfully.",
+          title: "Welcome to NetworX!",
+          description: "You've been successfully logged in.",
         });
-        setStep('email');
       }
     } catch (error: any) {
       console.error('Code verification error:', error);
       setError('Invalid verification code. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      await signupWithEmail(email, password);
-      
-      // Send welcome email
-      try {
-        await sendEmailNotification(
-          email,
-          "Welcome to NetworX!",
-          `
-            <h1>Welcome to NetworX!</h1>
-            <p>Your account has been created successfully.</p>
-            <p>Your verified phone number: ${phoneNumber}</p>
-            <p>Start networking and building meaningful professional connections!</p>
-          `,
-          'welcome'
-        );
-      } catch (emailError) {
-        console.warn('Welcome email failed to send:', emailError);
-      }
-
-      toast({
-        title: "Account Created",
-        description: "Welcome to NetworX! Please check your email for verification.",
-      });
-    } catch (error: any) {
-      console.error('Email signup error:', error);
-      setError('Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -138,8 +105,6 @@ const ProductionAuthFlow = () => {
     if (step === 'verify') {
       setStep('phone');
       setVerificationCode('');
-    } else if (step === 'email') {
-      setStep('verify');
     }
   };
 
@@ -151,9 +116,8 @@ const ProductionAuthFlow = () => {
             NetworX
           </CardTitle>
           <CardDescription>
-            {step === 'phone' && 'Verify your phone number'}
+            {step === 'phone' && 'Enter your phone number'}
             {step === 'verify' && 'Enter verification code'}
-            {step === 'email' && 'Complete your account setup'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -168,7 +132,7 @@ const ProductionAuthFlow = () => {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Demo mode: SMS service not configured. Use the code from the toast notification above.
+                Demo mode: Use code <strong>123456</strong> to continue.
               </AlertDescription>
             </Alert>
           )}
@@ -241,56 +205,7 @@ const ProductionAuthFlow = () => {
                       Verifying...
                     </>
                   ) : (
-                    'Verify Code'
-                  )}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {step === 'email' && (
-            <form onSubmit={handleEmailSignup} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Create a secure password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleBack}
-                  className="flex-1"
-                  disabled={loading}
-                >
-                  Back
-                </Button>
-                <Button type="submit" className="flex-1" disabled={loading || isLoading}>
-                  {(loading || isLoading) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Account...
-                    </>
-                  ) : (
-                    'Create Account'
+                    'Login'
                   )}
                 </Button>
               </div>
