@@ -3,10 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export const useBackendServices = () => {
-  const sendSMSVerification = async (phone: string, code: string) => {
+  const sendSMSVerification = async (phone: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('send-sms-verification', {
-        body: { phone, code }
+        body: { phone }
       });
 
       if (error) throw error;

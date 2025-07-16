@@ -39,14 +39,13 @@ const ProductionAuthFlow = () => {
     setError(null);
     
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const result = await sendSMSVerification(phoneNumber, code);
+      const result = await sendSMSVerification(phoneNumber);
       
       if (result.demo) {
         setIsDemoMode(true);
         toast({
           title: "Demo Mode Active",
-          description: `For testing, use code: ${code}`,
+          description: `For testing, use code: ${result.code}`,
         });
       } else {
         toast({
@@ -169,7 +168,7 @@ const ProductionAuthFlow = () => {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Demo mode: SMS service not configured. Use any 6-digit code to proceed.
+                Demo mode: SMS service not configured. Use the code from the toast notification above.
               </AlertDescription>
             </Alert>
           )}

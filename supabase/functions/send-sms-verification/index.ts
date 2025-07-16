@@ -9,7 +9,6 @@ const corsHeaders = {
 
 interface SMSRequest {
   phone: string;
-  code: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -18,9 +17,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { phone, code }: SMSRequest = await req.json();
+    const { phone }: SMSRequest = await req.json();
     
     console.log(`Processing SMS verification request for phone: ${phone}`);
+    
+    // Generate verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -93,7 +95,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: smsResult ? 'SMS sent via Twilio' : 'Verification code generated (demo mode)',
-        demo: !smsResult
+        demo: !smsResult,
+        code: !smsResult ? code : undefined // Return the code only in demo mode
       }),
       {
         status: 200,
