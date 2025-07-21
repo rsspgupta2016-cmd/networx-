@@ -73,8 +73,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate unique connection code
-    const code = `${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    // Generate unique numerical connection code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
     const expiresAt = isPermanent ? null : new Date(Date.now() + expirationMinutes * 60 * 1000).toISOString();
 
