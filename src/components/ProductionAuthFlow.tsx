@@ -79,18 +79,19 @@ const ProductionAuthFlow = () => {
       if (result.verified) {
         // Login with the generated email/password
         try {
-          await loginWithEmail(result.email, 'demo-password-123');
+          await loginWithEmail(result.email, result.password);
+          
+          toast({
+            title: "Welcome to NetworX!",
+            description: "You've been successfully logged in.",
+          });
+          
+          // Navigate to home page
+          navigate('/home');
         } catch (loginError) {
-          console.log('Login attempted, user may need to be created first');
+          console.error('Login error:', loginError);
+          setError('Login failed. Please try again.');
         }
-        
-        // Navigate to home page
-        navigate('/home');
-        
-        toast({
-          title: "Welcome to NetworX!",
-          description: "You've been successfully logged in.",
-        });
       }
     } catch (error: any) {
       console.error('Code verification error:', error);

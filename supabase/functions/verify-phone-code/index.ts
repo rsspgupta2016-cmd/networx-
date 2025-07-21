@@ -53,23 +53,29 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ verified: true })
       .eq('id', verificationData.id);
 
-    // Create a demo user with phone number
-    const email = `${phone}@demo.networx.com`;
+    // Clean phone number for email (remove spaces and special characters)
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+    const email = `${cleanPhone}@demo.networx.com`;
     const password = 'demo-password-123';
 
-    // Create user in auth
-    const { data: authData, error: signupError } = await supabaseClient.auth.admin.createUser({
-      email,
-      password,
-      phone,
-      email_confirm: true,
-      phone_confirm: true,
-    });
+    // Check if user already exists first
+    const { data: existingUser } = await supabaseClient.auth.admin.listUsers();
+    const userExists = existingUser.users.some(user => user.email === email || user.phone === phone);
 
-    if (signupError) {
-      console.error('User creation error:', signupError);
-      // If user already exists, that's fine
-      if (!signupError.message.includes('already exists')) {
+    let authData = null;
+    
+    if (!userExists) {
+      // Create user in auth only if they don't exist
+      const { data: newUser, error: signupError } = await supabaseClient.auth.admin.createUser({
+        email,
+        password,
+        phone,
+        email_confirm: true,
+        phone_confirm: true,
+      });
+
+      if (signupError) {
+        console.error('User creation error:', signupError);
         return new Response(
           JSON.stringify({ error: 'Failed to create user account' }),
           {
@@ -78,6 +84,21 @@ const handler = async (req: Request): Promise<Response> => {
           }
         );
       }
+      authData = newUser;
+    } else {
+      // Get existing user
+      const existingUserData = existingUser.users.find(user => user.email === email || user.phone === phone);
+      authData = { user: existingUserData };
+    }
+
+    // Generate session token for immediate login
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+    });
+
+    if (sessionError) {
+      console.error('Session generation error:', sessionError);
     }
 
     // Generate identity code
@@ -90,6 +111,9 @@ const handler = async (req: Request): Promise<Response> => {
         identityCode,
         phone,
         email,
+        password,
+        user: authData?.user,
+        sessionUrl: sessionData?.properties?.action_link,
         message: 'Phone number verified successfully' 
       }),
       {
