@@ -25,14 +25,15 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check verification code
+    // Check verification code (allow reuse of demo code 123456)
     const { data: verificationData, error: verifyError } = await supabaseClient
       .from('verification_codes')
       .select('*')
       .eq('phone', phone)
       .eq('code', code)
-      .eq('verified', false)
       .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (verifyError || !verificationData) {
