@@ -1,26 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useBackendServices } from '@/hooks/useBackendServices';
-import { Loader2, Phone, Shield, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; // must export sendEmailOtp + verifyEmailOtp
+import { Loader2, Mail, Shield, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 
 const ProductionAuthFlow = () => {
-  const { loginWithEmail, isLoading } = useAuth();
-  const { sendSMSVerification, verifyPhoneCode } = useBackendServices();
+  const { sendEmailOtp, verifyEmailOtp, loginWithEmailPassword } = useAuth();
   const navigate = useNavigate();
-  
-  const [step, setStep] = useState<'phone' | 'verify'>('phone');
-  const [phoneNumber, setPhoneNumber] = useState('');
+
+  const [step, setStep] = useState<'email' | 'verify'>('email');
+  const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Clear error when step changes
@@ -28,41 +24,32 @@ const ProductionAuthFlow = () => {
     setError(null);
   }, [step]);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  /** Request OTP to the email */
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber.trim()) {
-      setError('Please enter a valid phone number');
+    if (!email.trim()) {
+      setError('Please enter a valid email address');
       return;
     }
 
     setLoading(true);
     setError(null);
-    
     try {
-      const result = await sendSMSVerification(phoneNumber);
-      
-      if (result.demo) {
-        setIsDemoMode(true);
-        toast({
-          title: "Demo Mode Active",
-          description: `For testing, use code: ${result.code}`,
-        });
-      } else {
-        toast({
-          title: "Verification Code Sent",
-          description: "Please check your phone for the verification code.",
-        });
-      }
-      
+      await sendEmailOtp(email); // Supabase: signInWithOtp({ email })
+      toast({
+        title: 'Verification Code Sent',
+        description: `Please check ${email} for the 6-digit code.`,
+      });
       setStep('verify');
-    } catch (error: any) {
-      console.error('Phone verification error:', error);
+    } catch (err) {
+      console.error('Email verification error:', err);
       setError('Failed to send verification code. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  /** Verify the 6-digit code */
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verificationCode.trim()) {
@@ -72,29 +59,15 @@ const ProductionAuthFlow = () => {
 
     setLoading(true);
     setError(null);
-    
     try {
-      const result = await verifyPhoneCode(phoneNumber, verificationCode);
-      
-      if (result.verified) {
-        // Login with the generated email/password
-        try {
-          await loginWithEmail(result.email, result.password);
-          
-          toast({
-            title: "Welcome to NetworX!",
-            description: "You've been successfully logged in.",
-          });
-          
-          // Navigate to home page
-          navigate('/home');
-        } catch (loginError) {
-          console.error('Login error:', loginError);
-          setError('Login failed. Please try again.');
-        }
-      }
-    } catch (error: any) {
-      console.error('Code verification error:', error);
+      await verifyEmailOtp(email, verificationCode); // Supabase: verifyOtp
+      toast({
+        title: 'Welcome to NetworX!',
+        description: 'You are now logged in.',
+      });
+      navigate('/home');
+    } catch (err) {
+      console.error('Code verification error:', err);
       setError('Invalid verification code. Please try again.');
     } finally {
       setLoading(false);
@@ -104,7 +77,7 @@ const ProductionAuthFlow = () => {
   const handleBack = () => {
     setError(null);
     if (step === 'verify') {
-      setStep('phone');
+      setStep('email');
       setVerificationCode('');
     }
   };
@@ -117,10 +90,11 @@ const ProductionAuthFlow = () => {
             NetworX
           </CardTitle>
           <CardDescription>
-            {step === 'phone' && 'Enter your phone number'}
+            {step === 'email' && 'Enter your email address'}
             {step === 'verify' && 'Enter verification code'}
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
@@ -129,27 +103,18 @@ const ProductionAuthFlow = () => {
             </Alert>
           )}
 
-          {isDemoMode && step === 'verify' && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Demo mode: Use code <strong>123456</strong> to continue.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {step === 'phone' && (
-            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+          {step === 'email' && (
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
                     required
                   />
@@ -186,13 +151,13 @@ const ProductionAuthFlow = () => {
                   />
                 </div>
                 <p className="text-sm text-gray-600">
-                  Code sent to {phoneNumber}
+                  Code sent to {email}
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={handleBack}
                   className="flex-1"
                   disabled={loading}

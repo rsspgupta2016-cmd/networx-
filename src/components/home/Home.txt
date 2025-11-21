@@ -1,0 +1,14 @@
+components/
+ ├─ Home/
+ │   ├─ Home.tsx
+ │   ├─ Sidebar/
+ │   │   ├─ UserHeader.tsx.
+ │   │   ├─ CodeCard.tsx.
+ │   │   ├─ SectionToggle.tsx.
+ │   │   └─ ConnectionsList.tsx.
+ │   ├─ Dialogs/
+ │   │   ├─ CodeSettingsDialog.tsx
+ │   │   └─ ConnectDialog.tsx
+ │   └─ ChatView.tsx
+hooks/
+ └─ useFilteredConnections.ts
