@@ -70,8 +70,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signupWithEmail = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                emailRedirectTo: `${window.location.origin}/home`,
+            }
+        });
         if (error) throw error;
+        // Auto sign-in after signup (no email confirmation needed)
+        if (data.user && !data.session) {
+            // If no session returned, sign in directly
+            const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+            if (signInError) throw signInError;
+        }
     };
 
     const sendEmailOtp = async (email: string) => {
