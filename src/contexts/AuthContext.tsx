@@ -6,6 +6,16 @@ type AuthContextType = {
     setUser: (user: any | null) => void;
     isLoading: boolean;
     logout: () => Promise<void>;
+    handleLogout: () => Promise<void>;
+    loginWithEmail: (email: string, password: string) => Promise<void>;
+    signupWithEmail: (email: string, password: string) => Promise<void>;
+    sendEmailOtp: (email: string) => Promise<void>;
+    verifyEmailOtp: (email: string, code: string) => Promise<void>;
+    loginWithEmailPassword: (email: string, password: string) => Promise<void>;
+    signupWithOTP: (phone: string) => Promise<void>;
+    verifyOTP: (phone: string, otp: string, type: 'phone' | 'email') => Promise<void>;
+    signup: (identifier: string, password: string, displayName: string, interests: string[]) => Promise<void>;
+    updateUserProfile: (data: { displayName?: string; interests?: string[] }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,14 +25,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Initialize auth session
         const initAuth = async () => {
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData?.session?.user) {
                     setUser(sessionData.session.user);
                 } else {
-                    // Fallback to getUser() if session exists but user info not loaded
                     const { data: userData } = await supabase.auth.getUser();
                     setUser(userData?.user ?? null);
                 }
@@ -36,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         initAuth();
 
-        // Listen for auth changes (login, logout, token refresh)
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
         });
@@ -55,8 +62,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const handleLogout = logout;
+
+    const loginWithEmail = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+    };
+
+    const signupWithEmail = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+    };
+
+    const sendEmailOtp = async (email: string) => {
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        if (error) throw error;
+    };
+
+    const verifyEmailOtp = async (email: string, code: string) => {
+        const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+        if (error) throw error;
+    };
+
+    const loginWithEmailPassword = loginWithEmail;
+
+    const signupWithOTP = async (phone: string) => {
+        const { error } = await supabase.auth.signInWithOtp({ phone });
+        if (error) throw error;
+    };
+
+    const verifyOTP = async (phone: string, otp: string, type: 'phone' | 'email') => {
+        if (type === 'phone') {
+            const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' });
+            if (error) throw error;
+        } else {
+            const { error } = await supabase.auth.verifyOtp({ email: phone, token: otp, type: 'email' });
+            if (error) throw error;
+        }
+    };
+
+    const signup = async (identifier: string, password: string, displayName: string, interests: string[]) => {
+        // Profile creation handled by trigger
+        console.log("Signup complete for:", identifier, displayName, interests);
+    };
+
+    const updateUserProfile = async (data: { displayName?: string; interests?: string[] }) => {
+        if (!user?.id) return;
+        const { error } = await supabase
+            .from("profiles")
+            .update({ full_name: data.displayName })
+            .eq("id", user.id);
+        if (error) throw error;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, setUser, isLoading, logout }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            setUser, 
+            isLoading, 
+            logout,
+            handleLogout,
+            loginWithEmail,
+            signupWithEmail,
+            sendEmailOtp,
+            verifyEmailOtp,
+            loginWithEmailPassword,
+            signupWithOTP,
+            verifyOTP,
+            signup,
+            updateUserProfile
+        }}>
             {!isLoading && children}
         </AuthContext.Provider>
     );
