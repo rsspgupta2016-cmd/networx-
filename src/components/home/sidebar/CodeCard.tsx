@@ -38,22 +38,45 @@ const CodeCard = () => {
                 return;
             }
 
-            const { data: codeData, error } = await supabase
-                .from("connections")
+            const { data: codeData, error: codeError } = await supabase
+                .from("connection_codes")
                 .select("*")
                 .eq("code", codeInput)
-                .eq("verified", false)
+                .eq("is_active", true)
                 .single();
 
-            if (error || !codeData) {
-                setError("Invalid or already used code!");
+            if (codeError || !codeData) {
+                setError("Invalid or expired code!");
                 setIsVerifying(false);
                 return;
             }
 
-            await supabase
+            // Check if max uses reached
+            if (codeData.max_uses && codeData.current_uses && codeData.current_uses >= codeData.max_uses) {
+                setError("This code has reached its maximum uses!");
+                setIsVerifying(false);
+                return;
+            }
+
+            // Create a connection between users
+            const { error: connectionError } = await supabase
                 .from("connections")
-                .update({ verified: true, used_by: user.id })
+                .insert({
+                    user_id: user.id,
+                    connected_user_id: codeData.user_id,
+                    name: "New Connection",
+                });
+
+            if (connectionError) {
+                setError("Failed to create connection!");
+                setIsVerifying(false);
+                return;
+            }
+
+            // Update the code usage count
+            await supabase
+                .from("connection_codes")
+                .update({ current_uses: (codeData.current_uses || 0) + 1 })
                 .eq("id", codeData.id);
 
             setSuccess("Connection successful!");
