@@ -1,51 +1,67 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useConnection } from "./ConnectionContext";
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
+
+type Message = {
+    id: string;
+    connection_id: string;
+    sender_id: string;
+    content: string;
+    created_at: string;
+    is_read: boolean;
+};
 
 type ChatContextType = {
     latestCode: string | null;
     setLatestCode: (code: string | null) => void;
+    getMessagesForConnection: (connectionId: string) => Message[];
+    sendMessage: (connectionId: string, content: string) => Promise<void>;
+    markMessagesAsRead: (connectionId: string) => Promise<void>;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
-    const { activeConnection } = useConnection();
     const { user } = useAuth();
-
     const [latestCode, setLatestCode] = useState<string | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
 
-    // Fetch latest code from backend when user or activeConnection changes
-    useEffect(() => {
-        const fetchLatestCode = async () => {
-            if (!user || !activeConnection) return; // safety check
-            try {
-                const { data, error } = await activeConnection.supabase
-                    .from("connections")
-                    .select("*")
-                    .eq("created_by", user.id)
-                    .eq("verified", false)
-                    .order("created_at", { ascending: false })
-                    .limit(1);
+    const getMessagesForConnection = (connectionId: string): Message[] => {
+        return messages.filter(m => m.connection_id === connectionId);
+    };
 
-                if (error) {
-                    console.error("Supabase fetch error:", error.message);
-                    return;
-                }
+    const sendMessage = async (connectionId: string, content: string) => {
+        if (!user?.id) return;
 
-                if (data && data.length > 0) {
-                    setLatestCode(data[0].code || null);
-                }
-            } catch (err) {
-                console.error("Fetch latest code error:", err);
-            }
-        };
+        const { data, error } = await supabase.from("messages").insert({
+            connection_id: connectionId,
+            sender_id: user.id,
+            content,
+        }).select().single();
 
-        fetchLatestCode();
-    }, [user, activeConnection]);
+        if (!error && data) {
+            setMessages(prev => [...prev, data as Message]);
+        }
+    };
+
+    const markMessagesAsRead = async (connectionId: string) => {
+        if (!user?.id) return;
+
+        await supabase
+            .from("messages")
+            .update({ is_read: true })
+            .eq("connection_id", connectionId)
+            .neq("sender_id", user.id);
+    };
 
     return (
-        <ChatContext.Provider value={{ latestCode, setLatestCode }}>
+        <ChatContext.Provider value={{ 
+            latestCode, 
+            setLatestCode,
+            getMessagesForConnection,
+            sendMessage,
+            markMessagesAsRead
+        }}>
             {children}
         </ChatContext.Provider>
     );
