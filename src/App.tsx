@@ -11,7 +11,7 @@ import { ChatProvider } from "./contexts/ChatContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useIsMobile } from "./hooks/use-mobile";
 
-// ✅ Pages you’re keeping
+// ✅ Pages you're keeping
 import Login from "./pages/Login";
 import Home from "./components/home/Home.tsx";
 import Settings from "./pages/Settings";
@@ -22,9 +22,96 @@ import Discovery from "./pages/Discovery";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+// Separate component for routes that need context
+const AppRoutes = () => {
     const isMobile = useIsMobile();
 
+    if (isMobile) {
+        return (
+            <MobileLayout>
+                <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route
+                        path="/home"
+                        element={
+                            <ProtectedRoute>
+                                <Home />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/discovery"
+                        element={
+                            <ProtectedRoute>
+                                <Discovery />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/settings"
+                        element={
+                            <ProtectedRoute>
+                                <Settings />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute>
+                                <AdminPanel />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="/" element={<Navigate to="/login" />} />
+                    <Route path="*" element={<NotFound />} />
+                </Routes>
+            </MobileLayout>
+        );
+    }
+
+    return (
+        <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+                path="/home"
+                element={
+                    <ProtectedRoute>
+                        <Home />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/discovery"
+                element={
+                    <ProtectedRoute>
+                        <Discovery />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <Settings />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin"
+                element={
+                    <ProtectedRoute>
+                        <AdminPanel />
+                    </ProtectedRoute>
+                }
+            />
+            <Route path="/" element={<Navigate to="/login" />} />
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
+};
+
+const App = () => {
     return (
         <QueryClientProvider client={queryClient}>
             <AuthProvider>
@@ -34,95 +121,7 @@ const App = () => {
                             <Toaster />
                             <Sonner />
                             <BrowserRouter>
-                                {isMobile ? (
-                                    <MobileLayout>
-                                        <Routes>
-
-                                            <Route path="/login" element={<Login />} />
-
-                                            {/* Protected routes */}
-                                            <Route
-                                                path="/home"
-                                                element={
-                                                    <ProtectedRoute>
-                                                        <Home />
-                                                    </ProtectedRoute>
-                                                }
-                                            />
-                                            <Route
-                                                path="/discovery"
-                                                element={
-                                                    <ProtectedRoute>
-                                                        <Discovery />
-                                                    </ProtectedRoute>
-                                                }
-                                            />
-                                            <Route
-                                                path="/settings"
-                                                element={
-                                                    <ProtectedRoute>
-                                                        <Settings />
-                                                    </ProtectedRoute>
-                                                }
-                                            />
-                                            <Route
-                                                path="/admin"
-                                                element={
-                                                    <ProtectedRoute>
-                                                        <AdminPanel />
-                                                    </ProtectedRoute>
-                                                }
-                                            />
-
-                                            {/* Redirect root to /login */}
-                                            <Route path="/" element={<Navigate to="/login" />} />
-                                            <Route path="*" element={<NotFound />} />
-                                        </Routes>
-                                    </MobileLayout>
-                                ) : (
-                                    <Routes>
-                                        {/* Only Login route (no signup/prodauth) */}
-                                        <Route path="/login" element={<Login />} />
-
-                                        {/* Protected routes */}
-                                        <Route
-                                            path="/home"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <Home />
-                                                </ProtectedRoute>
-                                            }
-                                        />
-                                        <Route
-                                            path="/discovery"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <Discovery />
-                                                </ProtectedRoute>
-                                            }
-                                        />
-                                        <Route
-                                            path="/settings"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <Settings />
-                                                </ProtectedRoute>
-                                            }
-                                        />
-                                        <Route
-                                            path="/admin"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <AdminPanel />
-                                                </ProtectedRoute>
-                                            }
-                                        />
-
-                                        {/* Redirect root to /login */}
-                                        <Route path="/" element={<Navigate to="/login" />} />
-                                        <Route path="*" element={<NotFound />} />
-                                    </Routes>
-                                )}
+                                <AppRoutes />
                             </BrowserRouter>
                         </TooltipProvider>
                     </ChatProvider>
