@@ -43,9 +43,9 @@ export default function Login() {
                 await signupWithEmail(email, password);
                 toast({
                     title: "Account created!",
-                    description: "Welcome to NetworX!",
+                    description: "Please check your email to verify your account, or try logging in.",
                 });
-                navigate("/home");
+                setIsSignUp(false);
             } else {
                 await loginWithEmail(email, password);
                 toast({
