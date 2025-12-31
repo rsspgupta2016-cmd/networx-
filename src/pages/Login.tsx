@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Loader2, Phone, KeyRound } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+
+const DEMO_OTP = "123456";
 
 export default function Login() {
     const [phone, setPhone] = useState("");
@@ -14,7 +15,6 @@ export default function Login() {
     const [otpSent, setOtpSent] = useState(false);
 
     const navigate = useNavigate();
-    const { signupWithOTP, verifyOTP } = useAuth();
 
     const handleSendOtp = async (e: FormEvent) => {
         e.preventDefault();
@@ -28,23 +28,15 @@ export default function Login() {
         }
 
         setLoading(true);
-        try {
-            await signupWithOTP(phone);
+        // Demo mode - skip actual SMS
+        setTimeout(() => {
             setOtpSent(true);
+            setLoading(false);
             toast({
                 title: "OTP Sent!",
-                description: "Use code: 123456 for demo",
+                description: "Use code: 123456",
             });
-        } catch (err: any) {
-            console.error("OTP error:", err);
-            toast({
-                title: "Failed to send OTP",
-                description: err.message || "Please try again.",
-                variant: "destructive"
-            });
-        } finally {
-            setLoading(false);
-        }
+        }, 500);
     };
 
     const handleVerifyOtp = async (e: FormEvent) => {
@@ -59,23 +51,26 @@ export default function Login() {
         }
 
         setLoading(true);
-        try {
-            await verifyOTP(phone, otp, 'phone');
-            toast({
-                title: "Welcome!",
-                description: "You have successfully logged in.",
-            });
-            navigate("/home");
-        } catch (err: any) {
-            console.error("Verification error:", err);
-            toast({
-                title: "Verification failed",
-                description: err.message || "Invalid code. Please try again.",
-                variant: "destructive"
-            });
-        } finally {
+        
+        // Demo mode - check for demo code
+        setTimeout(() => {
+            if (otp === DEMO_OTP) {
+                // Store phone in localStorage for demo purposes
+                localStorage.setItem("demo_user_phone", phone);
+                toast({
+                    title: "Welcome!",
+                    description: "You have successfully logged in.",
+                });
+                navigate("/home");
+            } else {
+                toast({
+                    title: "Verification failed",
+                    description: "Invalid code. Use 123456 for demo.",
+                    variant: "destructive"
+                });
+            }
             setLoading(false);
-        }
+        }, 500);
     };
 
     return (
