@@ -8,6 +8,8 @@ type ProtectedRouteProps = {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
+  const demoPhone = typeof window !== "undefined" ? localStorage.getItem("demo_user_phone") : null;
+  const hasDemoLogin = Boolean(demoPhone);
 
   if (isLoading) {
     // Show loading spinner while checking auth status
@@ -18,8 +20,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user) {
-    // Redirect to auth page (not login) if not authenticated
+  if (!user && !hasDemoLogin) {
+    // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }
 

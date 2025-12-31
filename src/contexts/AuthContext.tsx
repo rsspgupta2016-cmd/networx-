@@ -28,12 +28,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const initAuth = async () => {
             try {
                 const { data: sessionData } = await supabase.auth.getSession();
-                if (sessionData?.session?.user) {
-                    setUser(sessionData.session.user);
-                } else {
-                    const { data: userData } = await supabase.auth.getUser();
-                    setUser(userData?.user ?? null);
+                const sessionUser = sessionData?.session?.user;
+
+                if (sessionUser) {
+                    setUser(sessionUser);
+                    return;
                 }
+
+                const { data: userData } = await supabase.auth.getUser();
+                if (userData?.user) {
+                    setUser(userData.user);
+                    return;
+                }
+
+                // Demo login support (dummy OTP)
+                const demoPhone = localStorage.getItem("demo_user_phone");
+                if (demoPhone) {
+                    setUser({
+                        id: `demo-${demoPhone}`,
+                        phone: demoPhone,
+                        displayName: demoPhone,
+                        identityCode: "DEMO",
+                        isDemo: true,
+                    });
+                    return;
+                }
+
+                setUser(null);
             } catch (err) {
                 console.error("Auth load error:", err);
                 setUser(null);
@@ -45,7 +66,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         initAuth();
 
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+            const demoPhone = localStorage.getItem("demo_user_phone");
+            setUser(
+                session?.user ??
+                    (demoPhone
+                        ? {
+                              id: `demo-${demoPhone}`,
+                              phone: demoPhone,
+                              displayName: demoPhone,
+                              identityCode: "DEMO",
+                              isDemo: true,
+                          }
+                        : null)
+            );
         });
 
         return () => {
@@ -55,6 +88,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         try {
+            // Clear demo login (dummy OTP)
+            localStorage.removeItem("demo_user_phone");
+
             await supabase.auth.signOut();
             setUser(null);
         } catch (err) {

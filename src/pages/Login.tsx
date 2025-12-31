@@ -1,11 +1,11 @@
 import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Loader2, Phone, KeyRound } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
 const DEMO_OTP = "123456";
 
 export default function Login() {
@@ -15,7 +15,7 @@ export default function Login() {
     const [otpSent, setOtpSent] = useState(false);
 
     const navigate = useNavigate();
-
+    const { setUser } = useAuth();
     const handleSendOtp = async (e: FormEvent) => {
         e.preventDefault();
         if (!phone) {
@@ -55,13 +55,21 @@ export default function Login() {
         // Demo mode - check for demo code
         setTimeout(() => {
             if (otp === DEMO_OTP) {
-                // Store phone in localStorage for demo purposes
+                // Store phone in localStorage + set a demo user in AuthContext
                 localStorage.setItem("demo_user_phone", phone);
+                setUser({
+                    id: `demo-${phone}`,
+                    phone,
+                    displayName: phone,
+                    identityCode: "DEMO",
+                    isDemo: true,
+                });
+
                 toast({
                     title: "Welcome!",
                     description: "You have successfully logged in.",
                 });
-                navigate("/home");
+                navigate("/home", { replace: true });
             } else {
                 toast({
                     title: "Verification failed",
