@@ -6,7 +6,7 @@ const BottomRightPanel = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-4 left-4 z-50">
             {/* Expanded Panel */}
             {isOpen && (
                 <div className="mb-2 w-[500px] max-h-[500px] bg-card border border-border rounded-lg shadow-lg flex flex-col overflow-hidden">
