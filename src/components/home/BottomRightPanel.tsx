@@ -30,11 +30,7 @@ const BottomRightPanel = () => {
             {/* Schedule Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg transition-colors ${
-                    isOpen
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card border border-border text-foreground hover:bg-muted"
-                }`}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
             >
                 <Calendar size={18} />
                 <span className="text-sm font-medium">Schedule</span>
