@@ -6,6 +6,7 @@ import CodeCard from "./sidebar/CodeCard";
 import SectionToggle from "./sidebar/SectionToggle";
 import ConnectionsList from "./sidebar/ConnectionsList";
 import NoticesPanel from "./sidebar/NoticesPanel";
+import SchedulePanel from "./sidebar/SchedulePanel";
 import CodeSettingsDialog from "./Dialogs/CodeSettingsDialog";
 import ChatView from "./ChatView";
 import ConnectDialog from "./Dialogs/ConnectDialog";
@@ -19,6 +20,23 @@ const Home = () => {
     const [showCodeSettings, setShowCodeSettings] = useState(false);
     const [showConnectDialog, setShowConnectDialog] = useState(false);
 
+    const renderSidebarContent = () => {
+        switch (activeSection) {
+            case "NOTICES":
+                return <NoticesPanel />;
+            case "SCHEDULE":
+                return <SchedulePanel />;
+            default:
+                return (
+                    <ConnectionsList 
+                        activeSection={activeSection} 
+                        activeConnection={activeConnection} 
+                        setActiveConnection={setActiveConnection} 
+                    />
+                );
+        }
+    };
+
     return (
         <div className="flex h-screen bg-background">
             {/* Sidebar */}
@@ -27,11 +45,7 @@ const Home = () => {
                 <CodeCard />
                 <SectionToggle activeSection={activeSection} setActiveSection={setActiveSection} />
                 
-                {activeSection === "NOTICES" ? (
-                    <NoticesPanel />
-                ) : (
-                    <ConnectionsList activeSection={activeSection} activeConnection={activeConnection} setActiveConnection={setActiveConnection} />
-                )}
+                {renderSidebarContent()}
             </div>
 
             {/* Chat Area */}
