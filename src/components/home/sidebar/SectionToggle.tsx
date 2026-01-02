@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Ticket, Megaphone } from "lucide-react";
+import { User, Ticket, Megaphone, Calendar } from "lucide-react";
 
 type Props = {
     activeSection: string;
@@ -11,6 +11,7 @@ const SectionToggle = ({ activeSection, setActiveSection }: Props) => {
         { id: "PERSONAL", label: "Personal", icon: User },
         { id: "INDUSTRY", label: "Industry", icon: Ticket },
         { id: "NOTICES", label: "Notices", icon: Megaphone },
+        { id: "SCHEDULE", label: "Schedule", icon: Calendar },
     ];
 
     return (
