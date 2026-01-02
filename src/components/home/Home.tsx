@@ -5,12 +5,11 @@ import UserHeader from "./sidebar/UserHeader";
 import CodeCard from "./sidebar/CodeCard";
 import SectionToggle from "./sidebar/SectionToggle";
 import ConnectionsList from "./sidebar/ConnectionsList";
-import NoticesPanel from "./sidebar/NoticesPanel";
-import SchedulePanel from "./sidebar/SchedulePanel";
 import CodeSettingsDialog from "./Dialogs/CodeSettingsDialog";
 import ChatView from "./ChatView";
 import ConnectDialog from "./Dialogs/ConnectDialog";
 import AIChatbot from "./AIChatbot";
+import BottomRightPanel from "./BottomRightPanel";
 
 const Home = () => {
     const { user, handleLogout } = useAuth();
@@ -20,23 +19,6 @@ const Home = () => {
     const [showCodeSettings, setShowCodeSettings] = useState(false);
     const [showConnectDialog, setShowConnectDialog] = useState(false);
 
-    const renderSidebarContent = () => {
-        switch (activeSection) {
-            case "NOTICES":
-                return <NoticesPanel />;
-            case "SCHEDULE":
-                return <SchedulePanel />;
-            default:
-                return (
-                    <ConnectionsList 
-                        activeSection={activeSection} 
-                        activeConnection={activeConnection} 
-                        setActiveConnection={setActiveConnection} 
-                    />
-                );
-        }
-    };
-
     return (
         <div className="flex h-screen bg-background">
             {/* Sidebar */}
@@ -45,7 +27,11 @@ const Home = () => {
                 <CodeCard />
                 <SectionToggle activeSection={activeSection} setActiveSection={setActiveSection} />
                 
-                {renderSidebarContent()}
+                <ConnectionsList 
+                    activeSection={activeSection} 
+                    activeConnection={activeConnection} 
+                    setActiveConnection={setActiveConnection} 
+                />
             </div>
 
             {/* Chat Area */}
@@ -69,6 +55,9 @@ const Home = () => {
 
             {/* AI Chatbot */}
             <AIChatbot />
+
+            {/* Bottom Right Panel - Notices & Schedule */}
+            <BottomRightPanel />
 
             {/* Dialogs */}
             <CodeSettingsDialog show={showCodeSettings} setShow={setShowCodeSettings} />
