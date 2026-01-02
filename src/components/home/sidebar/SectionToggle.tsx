@@ -9,7 +9,7 @@ type Props = {
 const SectionToggle = ({ activeSection, setActiveSection }: Props) => {
     const sections = [
         { id: "PERSONAL", label: "Personal", icon: User },
-        { id: "INDUSTRY", label: "Industry", icon: Ticket },
+        { id: "INDUSTRY", label: "Work", icon: Ticket },
     ];
 
     return (
