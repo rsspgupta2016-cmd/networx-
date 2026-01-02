@@ -110,7 +110,7 @@ const CodeCard = () => {
 
                 <div className="flex items-center gap-4 mb-4">
                     <div className="bg-[#0B1120] p-2 rounded-lg">
-                        <QRCodeSVG value={qrValue} size={80} bgColor="#0B1120" fgColor="#FF5E78" />
+                        <QRCodeSVG value={qrValue} size={80} bgColor="#0B1120" fgColor="#FFFFFF" />
                     </div>
                     <div className="flex-1">
                         <div className="text-2xl font-bold tracking-widest text-foreground mb-2">
