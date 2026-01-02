@@ -1,7 +1,11 @@
 // src/components/home/Sidebar/ConnectionsList.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useConnection, Connection } from "@/contexts/ConnectionContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, VolumeX, Volume2, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import EditConnectionNameDialog from "@/components/home/Dialogs/EditConnectionNameDialog";
 
 type Props = {
     activeSection: string;
@@ -37,6 +41,8 @@ const dummyPersonalContacts: Connection[] = [
 
 const ConnectionsList: React.FC<Props> = ({ activeSection, activeConnection, setActiveConnection }) => {
     const { connections } = useConnection();
+    const [editConnection, setEditConnection] = useState<Connection | null>(null);
+    const [showEditDialog, setShowEditDialog] = useState(false);
 
     // Filter connections by section and add dummy contacts for Personal
     const filteredConnections = useMemo(() => {
@@ -63,6 +69,14 @@ const ConnectionsList: React.FC<Props> = ({ activeSection, activeConnection, set
             .slice(0, 2);
     };
 
+    const handleEditName = (conn: Connection, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditConnection(conn);
+        setShowEditDialog(true);
+    };
+
+    const isDummyContact = (id: string) => id.startsWith("dummy-");
+
     if (!connections) {
         return <p className="text-muted-foreground p-4">Loading connections...</p>;
     }
@@ -72,25 +86,62 @@ const ConnectionsList: React.FC<Props> = ({ activeSection, activeConnection, set
     }
 
     return (
-        <ul className="overflow-y-auto flex-1 p-2 space-y-2">
-            {filteredConnections.map((conn) => (
-                <li
-                    key={conn.id}
-                    className={`p-3 cursor-pointer rounded-lg border border-border/30 hover:bg-accent/20 transition-colors flex items-center gap-3 ${
-                        activeConnection?.id === conn.id ? "bg-accent/30 border-primary/50" : "bg-card/50"
-                    }`}
-                    onClick={() => setActiveConnection(conn)}
-                >
-                    <Avatar className="h-10 w-10">
-                        <AvatarImage src={conn.profile_image || undefined} alt={conn.name} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-sm font-medium">
-                            {getInitials(conn.name)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium text-foreground">{conn.name}</span>
-                </li>
-            ))}
-        </ul>
+        <>
+            <ul className="overflow-y-auto flex-1 p-2 space-y-2">
+                {filteredConnections.map((conn) => (
+                    <li
+                        key={conn.id}
+                        className={`p-3 cursor-pointer rounded-lg border border-border/30 hover:bg-accent/20 transition-colors flex items-center gap-3 ${
+                            activeConnection?.id === conn.id ? "bg-accent/30 border-primary/50" : "bg-card/50"
+                        }`}
+                        onClick={() => setActiveConnection(conn)}
+                    >
+                        <Avatar className="h-10 w-10">
+                            <AvatarImage src={conn.profile_image || undefined} alt={conn.name} />
+                            <AvatarFallback className="bg-primary/20 text-primary text-sm font-medium">
+                                {getInitials(conn.name)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-foreground flex-1">{conn.custom_name || conn.name}</span>
+                        
+                        {!isDummyContact(conn.id) && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => handleEditName(conn, e as any)}>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Edit name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                        {conn.is_muted ? (
+                                            <>
+                                                <Volume2 className="h-4 w-4 mr-2" />
+                                                Unmute
+                                            </>
+                                        ) : (
+                                            <>
+                                                <VolumeX className="h-4 w-4 mr-2" />
+                                                Mute
+                                            </>
+                                        )}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </li>
+                ))}
+            </ul>
+
+            <EditConnectionNameDialog 
+                show={showEditDialog} 
+                setShow={setShowEditDialog} 
+                connection={editConnection} 
+            />
+        </>
     );
 };
 
