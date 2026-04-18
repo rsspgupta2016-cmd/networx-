@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, MessageCircle, Send, Clock, Settings, Infinity, Users } from "lucide-react";
+import { RefreshCw, MessageCircle, Send, Clock, Settings, Infinity, Users, ChevronDown, Lock } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +19,7 @@ const CodeCard = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
 
     const handleGenerate = async () => {
         if (!user || authLoading) return;
@@ -135,94 +137,105 @@ const CodeCard = () => {
     return (
         <>
             <div className="p-4 bg-card border-b border-border">
-                <div className="flex items-center gap-2 mb-3">
-                    <MessageCircle size={18} className="text-primary" />
-                    <span className="text-foreground font-medium">Connection Code</span>
-                </div>
-
-                <div className="p-4 bg-gradient-to-r from-muted to-card border border-border rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-sm text-muted-foreground">Your Code</span>
-                        <div className="flex gap-1">
-                            <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="h-7 w-7 p-0" 
-                                onClick={handleGenerate} 
-                                disabled={authLoading}
-                                title="Generate new code"
-                            >
-                                <RefreshCw className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                className="h-7 w-7 p-0" 
-                                size="icon"
-                                onClick={() => setShowSettings(true)}
-                                title="Code settings"
-                            >
-                                <Settings className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="bg-[#0B1120] p-2 rounded-lg">
-                            <QRCodeSVG value={qrValue} size={80} bgColor="#0B1120" fgColor="#FFFFFF" />
-                        </div>
-                        <div className="flex-1">
-                            <div className="text-2xl font-bold tracking-widest text-foreground mb-2">
-                                {currentCode?.code ?? "------"}
+                <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                    <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center justify-between gap-2 p-3 bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/15 hover:to-primary/10 border border-primary/20 rounded-lg transition-colors">
+                            <div className="flex items-center gap-2">
+                                <Lock size={16} className="text-primary" />
+                                <span className="text-foreground font-medium text-sm">Connect securely</span>
                             </div>
-                            {currentCode && (
-                                <div className="text-xs flex flex-col gap-1 text-muted-foreground">
-                                    {currentCode.isPermanent ? (
-                                        <span className="flex items-center gap-1">
-                                            <Infinity className="h-3 w-3" />
-                                            Permanent code
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {currentCode.settings?.expirationMinutes ?? "—"} min
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Users className="h-3 w-3" />
-                                                {currentCode.usesLeft === null
-                                                    ? "Unlimited uses"
-                                                    : `${currentCode.usesLeft} use${currentCode.usesLeft !== 1 ? 's' : ''} left`}
-                                            </span>
-                                        </>
+                            <ChevronDown
+                                size={18}
+                                className={`text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3">
+                        <div className="p-4 bg-gradient-to-r from-muted to-card border border-border rounded-lg">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-sm text-muted-foreground">Your Code</span>
+                                <div className="flex gap-1">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        onClick={handleGenerate}
+                                        disabled={authLoading}
+                                        title="Generate new code"
+                                    >
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        size="icon"
+                                        onClick={() => setShowSettings(true)}
+                                        title="Code settings"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="bg-[#0B1120] p-2 rounded-lg">
+                                    <QRCodeSVG value={qrValue} size={80} bgColor="#0B1120" fgColor="#FFFFFF" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="text-2xl font-bold tracking-widest text-foreground mb-2">
+                                        {currentCode?.code ?? "------"}
+                                    </div>
+                                    {currentCode && (
+                                        <div className="text-xs flex flex-col gap-1 text-muted-foreground">
+                                            {currentCode.isPermanent ? (
+                                                <span className="flex items-center gap-1">
+                                                    <Infinity className="h-3 w-3" />
+                                                    Permanent code
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" />
+                                                        {currentCode.settings?.expirationMinutes ?? "—"} min
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Users className="h-3 w-3" />
+                                                        {currentCode.usesLeft === null
+                                                            ? "Unlimited uses"
+                                                            : `${currentCode.usesLeft} use${currentCode.usesLeft !== 1 ? 's' : ''} left`}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
                                     )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Input
+                                    value={codeInput}
+                                    onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                                    placeholder="Enter someone's code"
+                                    maxLength={MIN_CODE_LENGTH}
+                                    className="flex-grow uppercase tracking-widest font-mono"
+                                />
+                                <Button
+                                    onClick={handleVerify}
+                                    disabled={isVerifying || codeInput.trim().length < MIN_CODE_LENGTH || authLoading}
+                                    className="bg-primary hover:bg-primary/90"
+                                >
+                                    <Send className="h-4 w-4 mr-1" /> Connect
+                                </Button>
+                            </div>
+
+                            {(error || success) && (
+                                <div className={`mt-2 text-sm ${error ? "text-destructive" : "text-green-500"}`}>
+                                    {error ?? success}
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <Input
-                            value={codeInput}
-                            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                            placeholder="Enter someone's code"
-                            maxLength={MIN_CODE_LENGTH}
-                            className="flex-grow uppercase tracking-widest font-mono"
-                        />
-                        <Button
-                            onClick={handleVerify}
-                            disabled={isVerifying || codeInput.trim().length < MIN_CODE_LENGTH || authLoading}
-                            className="bg-primary hover:bg-primary/90"
-                        >
-                            <Send className="h-4 w-4 mr-1" /> Connect
-                        </Button>
-                    </div>
-
-                    {(error || success) && (
-                        <div className={`mt-2 text-sm ${error ? "text-destructive" : "text-green-500"}`}>
-                            {error ?? success}
-                        </div>
-                    )}
-                </div>
+                    </CollapsibleContent>
+                </Collapsible>
             </div>
 
             <CodeSettingsDialog show={showSettings} setShow={setShowSettings} />
