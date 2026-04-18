@@ -12,9 +12,9 @@ type ChatViewProps = {
 const ChatView = ({ connection }: ChatViewProps) => {
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState<{ id: number; text: string; sender: "me" | "them"; time: string }[]>([
-        { id: 1, text: "Hey! How are you?", sender: "them", time: "10:30 AM" },
-        { id: 2, text: "I'm good, thanks! How about you?", sender: "me", time: "10:32 AM" },
-        { id: 3, text: "Great! Just working on some assignments.", sender: "them", time: "10:33 AM" },
+        { id: 1, text: "Hi! Just a reminder — your assignments in the following subjects are pending: Business Management (Unit 2), Economics (Unit 3) and Marketing (Unit 1). Please submit them before 25th April.", sender: "them", time: "10:30 AM" },
+        { id: 2, text: "Also, your attendance is currently short. You need to attend at least 6 more classes to maintain the required 75% attendance.", sender: "them", time: "10:31 AM" },
+        { id: 3, text: "Let me know if you need any help with the submissions.", sender: "them", time: "10:33 AM" },
     ]);
 
     const getInitials = (name: string) => {

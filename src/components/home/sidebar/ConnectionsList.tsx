@@ -39,12 +39,60 @@ const dummyPersonalContacts: Connection[] = [
     },
 ];
 
+// Dummy contacts for Work section
+const dummyWorkContacts: Connection[] = [
+    {
+        id: "dummy-w1",
+        name: "BBA Sec A official group",
+        user_id: "dummy",
+        is_muted: false,
+        calls_muted: false,
+        is_industry: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile_image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=100&h=100&fit=crop",
+    },
+    {
+        id: "dummy-w2",
+        name: "Prof Ganeshprasad (Mentor)",
+        user_id: "dummy",
+        is_muted: false,
+        calls_muted: false,
+        is_industry: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile_image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face",
+    },
+    {
+        id: "dummy-w3",
+        name: "Dr. Manish Goyal (Economics Faculty)",
+        user_id: "dummy",
+        is_muted: false,
+        calls_muted: false,
+        is_industry: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile_image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face",
+    },
+    {
+        id: "dummy-w4",
+        name: "Prof. Anjali Sharma (Marketing)",
+        user_id: "dummy",
+        is_muted: false,
+        calls_muted: false,
+        is_industry: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile_image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=face",
+    },
+];
+
 const ConnectionsList: React.FC<Props> = ({ activeSection, activeConnection, setActiveConnection }) => {
     const { connections } = useConnection();
     const [editConnection, setEditConnection] = useState<Connection | null>(null);
     const [showEditDialog, setShowEditDialog] = useState(false);
 
-    // Filter connections by section and add dummy contacts for Personal
+    // Filter connections by section and add dummy contacts
     const filteredConnections = useMemo(() => {
         const realConnections = connections?.filter((conn) => {
             if (activeSection === "PERSONAL") return !conn.is_industry;
@@ -52,9 +100,11 @@ const ConnectionsList: React.FC<Props> = ({ activeSection, activeConnection, set
             return true;
         }) ?? [];
 
-        // Add dummy contacts for Personal section
         if (activeSection === "PERSONAL") {
             return [...dummyPersonalContacts, ...realConnections];
+        }
+        if (activeSection === "WORK") {
+            return [...dummyWorkContacts, ...realConnections];
         }
 
         return realConnections;
